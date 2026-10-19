@@ -10,7 +10,12 @@ const toQuery = (params: QueryParams = {}) => {
   return entries.length ? `?${new URLSearchParams(entries)}` : '';
 };
 
-export const apiUrl = (path: string, params?: QueryParams) => `/api/${path}${toQuery(params)}`;
+// The backend's address when the dashboard is hosted somewhere else: NEXT_PUBLIC_API_URL (see
+// .env.example), fixed when the dashboard is built. Empty: the backend serves the dashboard itself,
+// so requests go to the same address.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? '').trim().replace(/\/+$/, '');
+
+export const apiUrl = (path: string, params?: QueryParams) => `${API_BASE}/api/${path}${toQuery(params)}`;
 
 // A change the server refused: its message (e.g. "This number already exists.") and, sometimes, a
 // second line with more detail.

@@ -21,3 +21,7 @@ npm run dev        # http://localhost:3001; /api calls are forwarded to http://l
 npm run build      # static files in out/, served by the API server
 npm run typecheck
 ```
+
+## Settings
+
+None are needed when the backend serves the dashboard (the usual setup). To host the dashboard on its own (e.g. Vercel), set `NEXT_PUBLIC_API_URL` to the backend's address and add the dashboard's address to the backend's `CORS_ORIGINS`. See [.env.example](.env.example).
