@@ -1,13 +1,6 @@
 import type { Period } from '@/lib/format';
+import { Segmented } from './PageParts';
 
 export default function PeriodTabs({ periods, days, onChange }: { periods: Period[]; days: number; onChange: (days: number) => void }) {
-  return (
-    <nav className="period-tabs" aria-label="Time period">
-      {periods.map((p) => (
-        <button key={p.days} type="button" aria-pressed={p.days === days} onClick={() => onChange(p.days)}>
-          {p.tab}
-        </button>
-      ))}
-    </nav>
-  );
+  return <Segmented label="Time period" value={days} onChange={onChange} options={periods.map((p) => ({ value: p.days, label: p.tab }))} />;
 }

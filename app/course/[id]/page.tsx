@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/PageParts';
 import CourseDetail from '@/components/CourseDetail';
 import { COURSE_IDS } from '@/lib/format';
 import type { CourseId } from '@/lib/types';
@@ -13,7 +14,7 @@ export function generateStaticParams() {
 export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <Suspense fallback={<p className="page-loading">Loading…</p>}>
+    <Suspense fallback={<PageSkeleton />}>
       <CourseDetail courseId={id as CourseId} />
     </Suspense>
   );

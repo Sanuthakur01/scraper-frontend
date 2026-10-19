@@ -1,4 +1,4 @@
-import type { CourseId, Job, PlacementStatus } from './types';
+import type { CourseId, Job } from './types';
 
 // Course colours follow the course everywhere (never re-assigned by rank or filter).
 export const COURSE_COLORS: Record<CourseId, string> = {
@@ -42,19 +42,14 @@ export const periodFrom = (days: string | null) => PERIODS.find((p) => String(p.
 
 export const COURSE_IDS = Object.keys(COURSE_COLORS) as CourseId[];
 
-// Placement statuses in the order a placement moves through.
-export const PLACEMENT_STATUSES: { id: PlacementStatus; label: string }[] = [
-  { id: 'contacted', label: 'Contacted' },
-  { id: 'cvs-sent', label: 'CVs sent' },
-  { id: 'interview', label: 'Interview' },
-  { id: 'placed', label: 'Placed' },
-  { id: 'closed', label: 'Closed (no hire)' },
-];
-export const statusLabel = (status: string) => PLACEMENT_STATUSES.find((s) => s.id === status)?.label ?? '';
-
-// "2026-10" -> "October 2026"
-export const formatMonth = (month: string) =>
-  new Date(`${month}-15T12:00:00+05:30`).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' });
+// "Data Analyst" -> "DA": the course badge.
+export const courseInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
 export const percent = (part: number, whole: number) => (whole ? `${Math.round((part / whole) * 100)}%` : '—');
 
@@ -72,6 +67,22 @@ const istDateTime = new Intl.DateTimeFormat('en-IN', {
 const istDay = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
 
 export const formatDateTime = (value?: string | null) => (value ? `${istDateTime.format(new Date(value))} IST` : '—');
+
+const istTime = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
+const istDayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }); // 2026-10-19
+
+// "today, 4:28 pm" / "yesterday, 9:05 am" / "17 Oct, 12:48 pm" (IST).
+export function formatUpdated(value?: string | null) {
+  if (!value) return 'not yet';
+  const date = new Date(value);
+  const day = istDayKey.format(date);
+  const today = istDayKey.format(new Date());
+  const yesterday = istDayKey.format(new Date(Date.now() - 86_400_000));
+  const time = istTime.format(date).toLowerCase();
+  if (day === today) return `today, ${time}`;
+  if (day === yesterday) return `yesterday, ${time}`;
+  return `${istDay.format(date)}, ${time}`;
+}
 
 // "2026-10-16" (an IST calendar day) -> "16 Oct"
 export const formatDay = (day: string) => istDay.format(new Date(`${day}T12:00:00+05:30`));

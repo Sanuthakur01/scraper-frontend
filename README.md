@@ -6,8 +6,8 @@ Built with Next.js and TypeScript. All data comes from the tracker's Express API
 
 ## Pages
 
-- **Dashboard** (`/`): new jobs per course and platform, daily trend, top companies, cities, skills, placement progress, and the skills that would open up more jobs for each course.
-- **Course pages** (`/course/data-analyst`, …): one course in detail, with its job list. Each job can have an HR phone, email, remarks and placement status.
+- **Dashboard** (`/`): new jobs per course and platform, daily trend, top companies, cities, skills, and the skills that would open up more jobs for each course.
+- **Course pages** (`/course/data-analyst`, …): one course in detail, with its job list. Each job shows an HR phone, email and notes the team fills in; Expand shows more columns.
 - **Weekly report** (`/report`): the last 7 days as a PNG image for Instagram or LinkedIn and as text for WhatsApp.
 - **Hiring partners** (`/partners`): companies that keep hiring for the courses, with HR contacts and a CSV download.
 

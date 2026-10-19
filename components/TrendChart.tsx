@@ -1,4 +1,4 @@
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { COURSE_COLORS, formatDay, formatNumber } from '@/lib/format';
 import type { ApiState, Course, TrendPoint, TrendsResponse } from '@/lib/types';
 import Legend from './Legend';
@@ -28,6 +28,10 @@ function TrendTooltip({ active, point, courses }: TooltipProps) {
 
 export default function TrendChart({ courses, state }: { courses: Course[]; state: ApiState<TrendsResponse> }) {
   const series = state.data?.series ?? [];
+  const fewDays = series.length <= 10;
+  // Days collected by the one-off backfill (before daily collection began), shaded and explained.
+  const backfillEnd = state.data?.backfilledBefore;
+  const backfillDays = backfillEnd ? series.filter((p) => p.day < backfillEnd) : [];
   return (
     <div className={state.loading ? 'is-loading' : ''}>
       {/* One course needs no legend: the heading names it. */}
@@ -36,6 +40,9 @@ export default function TrendChart({ courses, state }: { courses: Course[]; stat
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
             <CartesianGrid vertical={false} stroke="var(--grid)" />
+            {backfillDays.length > 0 && (
+              <ReferenceArea x1={backfillDays[0].day} x2={backfillDays.at(-1)?.day} fill="var(--grid)" fillOpacity={0.6} ifOverflow="hidden" />
+            )}
             <XAxis
               dataKey="day"
               tickFormatter={formatDay}
@@ -61,7 +68,7 @@ export default function TrendChart({ courses, state }: { courses: Course[]; stat
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                dot={false}
+                dot={fewDays ? { r: 4, fill: COURSE_COLORS[c.id], stroke: 'var(--surface)', strokeWidth: 2 } : false}
                 activeDot={{ r: 4, stroke: 'var(--surface)', strokeWidth: 2 }}
                 isAnimationActive={false}
               />
@@ -69,6 +76,12 @@ export default function TrendChart({ courses, state }: { courses: Course[]; stat
           </LineChart>
         </ResponsiveContainer>
       </div>
+      {backfillDays.length > 0 && backfillEnd && (
+        <p className="chart-note">
+          Shaded days (before {formatDay(backfillEnd)}) come from a one-off backfill of earlier postings and may be incomplete;
+          daily collection started on {formatDay(backfillEnd)}.
+        </p>
+      )}
     </div>
   );
 }

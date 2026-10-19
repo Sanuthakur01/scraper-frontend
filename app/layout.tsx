@@ -1,19 +1,35 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
-import TopNav from '@/components/TopNav';
+import AppHeader from '@/components/AppHeader';
 import './globals.css';
 
+// Downloaded at build time and served with the site: no request to Google from the browser.
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+
 export const metadata: Metadata = {
-  title: 'India Job Tracker',
+  title: 'IJF Job Tracker',
   description: 'New job openings in India for Data Analyst, Data Science, Data Engineering and Production Support roles',
 };
 
+// Applies a remembered light/dark choice before the page paints (see ThemeToggle), so it never flashes.
+const themeScript = `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <TopNav />
+        <AppHeader />
         {children}
+        <footer className="app-footer">
+          <div className="app-footer-inner">
+            <span className="app-footer-brand">IJF Job Tracker</span>
+            <span>Job openings from LinkedIn, Naukri, Indeed and Glassdoor · updated every day</span>
+          </div>
+        </footer>
       </body>
     </html>
   );

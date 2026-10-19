@@ -1,17 +1,23 @@
 import Link from 'next/link';
-import { changePercent, COURSE_COLORS, formatNumber, sumCounts, type Period } from '@/lib/format';
+import type { CSSProperties } from 'react';
+import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, sumCounts, type Period } from '@/lib/format';
 import type { ApiState, Course, Summary } from '@/lib/types';
+import { ArrowRightIcon, TrendIcon } from './Icons';
 
-export function Delta({ current, previous, label }: { current: number; previous: number; label: string }) {
+// "▲ 12%" in a green (up) or red (down) badge, then "vs previous 7 days".
+// quiet: say nothing (instead of "no earlier data") when there is nothing to compare with.
+export function Delta({ current, previous, label, quiet = false }: { current: number; previous: number; label: string; quiet?: boolean }) {
   const pct = changePercent(current, previous);
-  if (pct == null) return <p className="delta">No earlier data to compare</p>;
+  // A span (not a p) so it can also sit inside a clickable card, which is a button.
+  if (pct == null) return quiet ? null : <span className="delta">No fully collected earlier period to compare with</span>;
   const direction = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
-  const arrow = { up: '▲', down: '▼', flat: '■' }[direction];
   return (
-    <p className={`delta delta-${direction}`}>
-      {arrow} {pct > 0 ? '+' : ''}
-      {pct}% <span>vs {label}</span>
-    </p>
+    <span className="delta">
+      <span className={`delta-badge ${direction}`}>
+        {{ up: '▲', down: '▼', flat: '■' }[direction]} {Math.abs(pct)}%
+      </span>
+      vs {label}
+    </span>
   );
 }
 
@@ -21,36 +27,56 @@ interface Props {
   period: Period;
 }
 
-// Total + one tile per course. Each course tile opens that course's detail page.
+// The headline numbers: all courses together, then one colour-coded card per course (its share of
+// all new jobs, the change vs the previous period when it can be compared) that opens its page.
 export default function StatTiles({ courses, state, period }: Props) {
   const current = state.data?.current ?? {};
   const previous = state.data?.previous ?? {};
+  const total = sumCounts(current);
 
   return (
-    <section className={`tiles ${state.loading ? 'is-loading' : ''}`} aria-label="New jobs per course">
-      <div className="tile tile-total">
-        <p className="tile-label">All four courses</p>
-        <p className="tile-value hero">{formatNumber(sumCounts(current))}</p>
-        <Delta current={sumCounts(current)} previous={sumCounts(previous)} label={period.previous} />
-      </div>
-      {courses.map((course) => (
-        <Link
-          className="tile tile-link"
-          key={course.id}
-          href={`/course/${course.id}?days=${period.days}`}
-          aria-label={`${course.name}: ${formatNumber(current[course.id])} new jobs. View details`}
-        >
-          <p className="tile-label">
-            <span className="swatch" style={{ background: COURSE_COLORS[course.id] }} aria-hidden="true" />
-            {course.name}
-          </p>
-          <p className="tile-value">{formatNumber(current[course.id])}</p>
-          <Delta current={current[course.id] ?? 0} previous={previous[course.id] ?? 0} label={period.previous} />
-          <span className="tile-more" aria-hidden="true">
-            View details →
+    <section className={`kpis ${state.loading ? 'is-loading' : ''}`} aria-label="New jobs per course">
+      <div className="kpi kpi-total">
+        <div className="kpi-top">
+          <span className="kpi-badge" aria-hidden="true">
+            <TrendIcon size={16} />
           </span>
-        </Link>
-      ))}
+          <span className="kpi-name">All courses</span>
+        </div>
+        <p className="kpi-value">{formatNumber(total)}</p>
+        <p className="kpi-period">{period.title}</p>
+        <Delta current={total} previous={sumCounts(previous)} label={period.previous} />
+      </div>
+      {courses.map((course) => {
+        const count = current[course.id] ?? 0;
+        return (
+          <Link
+            className="kpi kpi-course"
+            key={course.id}
+            href={`/course/${course.id}?days=${period.days}`}
+            style={{ '--course': COURSE_COLORS[course.id] } as CSSProperties}
+            aria-label={`${course.name}: ${formatNumber(count)} new jobs, ${percent(count, total)} of all. Open the course page`}
+          >
+            <div className="kpi-top">
+              <span className="kpi-badge" aria-hidden="true">
+                {courseInitials(course.name)}
+              </span>
+              <span className="kpi-name">{course.name}</span>
+            </div>
+            <p className="kpi-value">{formatNumber(count)}</p>
+            <div className="kpi-share">
+              <span className="kpi-share-track" aria-hidden="true">
+                <span style={{ width: total ? `${(count / total) * 100}%` : 0 }} />
+              </span>
+              {percent(count, total)} of all
+            </div>
+            <Delta current={count} previous={previous[course.id] ?? 0} label={period.previous} quiet />
+            <span className="kpi-cta" aria-hidden="true">
+              View jobs <ArrowRightIcon size={14} />
+            </span>
+          </Link>
+        );
+      })}
     </section>
   );
 }

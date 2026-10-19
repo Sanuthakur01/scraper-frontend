@@ -53,6 +53,7 @@ export interface TrendsResponse {
   days: number;
   anchor: string;
   series: TrendPoint[];
+  backfilledBefore: string | null; // days before this came from a one-off backfill (may be incomplete)
 }
 
 export interface NamedCount {
@@ -106,6 +107,23 @@ export interface SkillGap {
   coveredAfter: number; // coveredNow + gained
 }
 
+// Adding skills one after another (server/src/skillGaps.js skillPlan).
+export interface SkillPlan {
+  ladder: { skill: string; added: number; total: number }[]; // total: postings newly matched so far
+  maxAdd: number; // jobs missing more untaught skills than this are out of reach
+  jobs: PlanJob[]; // the jobs within reach, with the skills each one is missing
+}
+
+export interface PlanJob {
+  id: string;
+  title: string;
+  company: string;
+  cities: string[];
+  platform: string;
+  url: string;
+  missing: string[];
+}
+
 // GET /api/skill-gaps?course=&days=
 export interface SkillGapsResponse {
   course: Course;
@@ -116,6 +134,7 @@ export interface SkillGapsResponse {
   named: number; // of those, postings naming at least one tracked skill
   coveredNow: number; // named postings whose every named skill is taught
   skills: SkillGap[];
+  plan: SkillPlan;
   trackedSkillCount: number;
   source: { platforms: string[]; firstSeenFrom: string | null; firstSeenTo: string | null; lastRefreshed: string | null };
 }
@@ -139,35 +158,6 @@ export interface Job {
   platforms: string[];
   links: Record<string, string>;
   contact: JobContact;
-  placement: JobPlacement;
-}
-
-// How far the team got with a job opening ('' = not started).
-export type PlacementStatus = 'contacted' | 'cvs-sent' | 'interview' | 'placed' | 'closed';
-
-export interface JobPlacement {
-  status: PlacementStatus | '';
-  students: string;
-  placedCount: number; // only when placed
-  placedAt: string | null; // the day it was first marked placed
-}
-
-// GET /api/placements: per course, jobs at each status now and students placed by month (IST).
-export interface PlacementCounts {
-  contacted: number;
-  cvsSent: number;
-  interview: number;
-  closed: number;
-  placedThisMonth: number;
-  placedLastMonth: number;
-  placedTotal: number;
-}
-
-export interface PlacementsResponse {
-  thisMonth: string; // "2026-10"
-  lastMonth: string;
-  courses: (PlacementCounts & Course)[];
-  total: PlacementCounts;
 }
 
 // GET /api/report: the last 7 days, to share.
@@ -194,8 +184,6 @@ export interface Partner {
   lastPosted: string;
   phones: string[];
   emails: string[];
-  placed: number;
-  inProgress: number;
 }
 
 export interface PartnersResponse {
@@ -226,9 +214,6 @@ export interface FollowUpInput {
   phone: string;
   email: string;
   remarks: string;
-  status: PlacementStatus | '';
-  students: string;
-  placedCount: number;
 }
 
 export interface JobsResponse {
@@ -237,6 +222,7 @@ export interface JobsResponse {
   page: number;
   pageSize: number;
   total: number;
+  withContact: number; // of `total`, jobs with an HR phone, email or note
   pages: number;
   items: Job[];
 }

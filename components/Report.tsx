@@ -2,9 +2,17 @@
 
 import { useRef, useState } from 'react';
 import { useApi } from '@/lib/api';
-import { formatDateTime, formatNumber } from '@/lib/format';
+import { formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
 import type { ReportResponse } from '@/lib/types';
 import ReportImage, { REPORT_HEIGHT, REPORT_WIDTH, reportRange, weekChange } from './ReportImage';
+import { CheckIcon, CopyIcon, DownloadIcon, ImageIcon, MessageIcon, ReportIcon } from './Icons';
+import { CardHeader, HowSteps, PageError, PageHeader, PageSkeleton } from './PageParts';
+
+const HOW_TO = [
+  { title: 'Check the numbers', text: 'the report always covers the latest 7 days' },
+  { title: 'Download the image', text: 'post it on Instagram or LinkedIn' },
+  { title: 'Copy the message', text: 'paste it into a WhatsApp chat or group' },
+];
 
 // The same report as WhatsApp text (*bold* is WhatsApp's own formatting).
 function whatsappText(r: ReportResponse) {
@@ -67,8 +75,8 @@ export default function Report() {
   const [message, setMessage] = useState('');
   const report = state.data;
 
-  if (state.error) return <p className="page-error">Could not load the report: {state.error.message}</p>;
-  if (!report) return <p className="page-loading">Loading…</p>;
+  if (state.error) return <PageError title="Could not load the report" error={state.error} />;
+  if (!report) return <PageSkeleton />;
 
   const text = whatsappText(report);
   const flash = (note: string) => {
@@ -98,42 +106,56 @@ export default function Report() {
 
   return (
     <main className="page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Share · {reportRange(report)}</p>
-          <h1>Weekly job market report</h1>
-          <p className="subtitle">The last 7 days of new openings, ready to post. It updates itself after every collection.</p>
-        </div>
-        <div className="refresh">
-          <p>Last updated: {formatDateTime(report.lastRefreshed)}</p>
-          {!report.comparable && <p>Week-on-week change appears once there is a full earlier week of data.</p>}
-        </div>
-      </header>
+      <PageHeader
+        icon={<ReportIcon size={20} />}
+        eyebrow={`Share · ${reportRange(report)}`}
+        title="Weekly job market report"
+        subtitle="The last 7 days of new openings, ready to post on Instagram, LinkedIn and WhatsApp. It updates itself after every collection."
+        actions={
+          message ? (
+            <span className="toast" role="status">
+              <CheckIcon size={14} /> {message}
+            </span>
+          ) : undefined
+        }
+      >
+        <span className="status-pill" title={`Last collection finished ${formatDateTime(report.lastRefreshed)}`}>
+          <span className="status-dot ok" aria-hidden="true" />
+          Updated {formatUpdated(report.lastRefreshed)}
+        </span>
+        {!report.comparable && <span className="status-pill">Week-on-week change appears once a full earlier week is collected</span>}
+      </PageHeader>
 
-      <div className="report-actions">
-        <button type="button" className="small-button primary" onClick={saveImage}>
-          Download image (Instagram / LinkedIn)
-        </button>
-        <button type="button" className="small-button" onClick={copyText}>
-          Copy text for WhatsApp
-        </button>
-        {message && (
-          <span className="saved-note" role="status">
-            {message}
-          </span>
-        )}
-      </div>
+      <HowSteps label="How to share the report" steps={HOW_TO} />
 
       <div className="report-layout">
         <section className="card">
-          <h2>Image</h2>
+          <CardHeader
+            icon={<ImageIcon />}
+            title="Image"
+            description="1080 × 1350 · fits Instagram and LinkedIn"
+            actions={
+              <button type="button" className="btn btn-primary" onClick={saveImage}>
+                <DownloadIcon /> Download image
+              </button>
+            }
+          />
           <div className="report-preview" ref={imageBox}>
             <ReportImage report={report} />
           </div>
         </section>
         <section className="card">
-          <h2>WhatsApp text</h2>
-          <textarea ref={textBox} className="whatsapp-text" readOnly value={text} rows={24} aria-label="WhatsApp text" />
+          <CardHeader
+            icon={<MessageIcon />}
+            title="WhatsApp message"
+            description="Copy it, then paste into a chat or group"
+            actions={
+              <button type="button" className="btn" onClick={copyText}>
+                <CopyIcon /> Copy text
+              </button>
+            }
+          />
+          <textarea ref={textBox} className="whatsapp-text" readOnly value={text} rows={26} aria-label="WhatsApp text" />
         </section>
       </div>
     </main>

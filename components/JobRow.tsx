@@ -1,28 +1,44 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { ApiError, sendJson } from '@/lib/api';
-import { COURSE_COLORS, formatDateTime, formatExperience, formatPosted, PLACEMENT_STATUSES, statusLabel } from '@/lib/format';
+import { COURSE_COLORS, formatDate, formatDateTime, formatExperience, formatPosted } from '@/lib/format';
 import type { ContactSource, FollowUpInput, Job } from '@/lib/types';
+import { ExternalIcon, PencilIcon } from './Icons';
 
 // Every platform the job is listed on, the one it is counted under first.
 const listingOrder = (job: Job) =>
   [job.primaryPlatform, ...job.platforms.filter((p) => p !== job.primaryPlatform)].filter((p) => job.links[p]);
 
 const splitList = (value: string) => value.split(/\s*,\s*/).filter(Boolean);
+const SKILLS_SHOWN = 3;
 
 function SourceNote({ source }: { source: ContactSource }) {
   return source === 'posting' ? <span className="contact-source">from the job post</span> : null;
 }
 
+// An empty contact cell: a dash, and "Add phone" while the row is pointed at (clicking the cell opens
+// the row for typing; keyboard users have the Edit button).
+function Empty({ hint }: { hint: string }) {
+  return (
+    <span className="placeholder">
+      <span className="ph-rest">—</span>
+      <span className="ph-hover" aria-hidden="true">
+        <PencilIcon size={12} /> {hint}
+      </span>
+    </span>
+  );
+}
+
 interface Props {
   job: Job;
-  courseName: string;
+  courseName?: string; // shown under the title when the list has several courses
+  expanded: boolean; // also show salary, skills, work mode and when we found it
   onSaved: (job: Job) => void;
 }
 
-// One job in the postings table. The team's follow-up (HR phone, email, remarks; placement status,
-// students, number placed) is typed in with one Edit and saved to the database with one Submit.
-export default function JobRow({ job, courseName, onSaved }: Props) {
-  const { contact, placement } = job;
+// One job in the job list. Phone, email and notes are always shown; clicking one of them (or Edit)
+// lets an analyst type them in, and Save stores them in the database.
+export default function JobRow({ job, courseName, expanded, onSaved }: Props) {
+  const { contact } = job;
   const [draft, setDraft] = useState<FollowUpInput | null>(null); // null = not editing
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ message: string; detail: string } | null>(null);
@@ -36,14 +52,8 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
   }, [justSaved]);
 
   const startEditing = () => {
-    setDraft({
-      phone: contact.phone,
-      email: contact.email,
-      remarks: contact.remarks,
-      status: placement.status,
-      students: placement.students,
-      placedCount: placement.placedCount || 1,
-    });
+    if (draft) return;
+    setDraft({ phone: contact.phone, email: contact.email, remarks: contact.remarks });
     setError(null);
     setJustSaved(false);
   };
@@ -52,7 +62,7 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
     setError(null);
   };
   const change = (key: keyof FollowUpInput) => (event: { target: { value: string } }) =>
-    setDraft((d) => (d ? { ...d, [key]: key === 'placedCount' ? Number(event.target.value) : event.target.value } : d));
+    setDraft((d) => (d ? { ...d, [key]: event.target.value } : d));
   const escapeCancels = (event: KeyboardEvent) => {
     if (event.key === 'Escape') cancel();
   };
@@ -72,34 +82,64 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
     }
   };
 
-  const hasDetails = Boolean(contact.phone || contact.email || contact.remarks || placement.status || placement.students);
+  // The contact cells open the row for typing when clicked (Edit does the same, for the keyboard).
+  const editable = draft ? undefined : { onClick: startEditing, title: 'Click to fill in' };
 
   return (
     <tr className={draft ? 'is-editing' : undefined}>
-      <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
-      <td>
+      <td className="job-cell">
         <span className="job-title">{job.title}</span>
-        <span className="job-course">
-          <span className="swatch" style={{ background: COURSE_COLORS[job.course] }} aria-hidden="true" />
-          {courseName}
+        <span className="job-sub">
+          {courseName && (
+            <span className="job-course">
+              <span className="dot" style={{ background: COURSE_COLORS[job.course] }} aria-hidden="true" />
+              {courseName}
+              <span aria-hidden="true"> · </span>
+            </span>
+          )}
+          {job.company || 'Company not shown'}
+          {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
         </span>
       </td>
-      <td>{job.company || '—'}</td>
-      <td>{job.cities?.length ? job.cities.join(', ') : '—'}</td>
       <td className="nowrap">{formatExperience(job)}</td>
       <td>
         <ul className="listings">
           {listingOrder(job).map((platform) => (
             <li key={platform}>
-              <a href={job.links[platform]} target="_blank" rel="noopener noreferrer">
+              <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={`Open on ${platform}`}>
                 {platform}
+                <ExternalIcon size={12} />
               </a>
             </li>
           ))}
         </ul>
       </td>
+      <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
 
-      <td className="contact-cell">
+      {expanded && (
+        <>
+          <td className="extra-cell">{job.salaryText || <span className="muted">Not shown</span>}</td>
+          <td className="extra-cell skills-cell">
+            {job.skills?.length ? (
+              <>
+                {job.skills.slice(0, SKILLS_SHOWN).join(', ')}
+                {job.skills.length > SKILLS_SHOWN && (
+                  <span className="muted" title={job.skills.join(', ')}>
+                    {' '}
+                    +{job.skills.length - SKILLS_SHOWN}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="muted">—</span>
+            )}
+          </td>
+          <td className="nowrap">{job.isRemote ? 'Remote' : 'On-site'}</td>
+          <td className="nowrap muted">{formatDate(job.firstSeenAt)}</td>
+        </>
+      )}
+
+      <td {...editable} className={`contact-cell contact-col ${editable ? 'editable' : ''}`}>
         {draft ? (
           <input
             className="contact-input"
@@ -115,17 +155,17 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
         ) : contact.phone ? (
           <>
             {splitList(contact.phone).map((phone) => (
-              <a key={phone} className="contact-value" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
+              <a key={phone} className="contact-value" href={`tel:${phone.replace(/[^\d+]/g, '')}`} onClick={(e) => e.stopPropagation()}>
                 {phone}
               </a>
             ))}
             <SourceNote source={contact.phoneSource} />
           </>
         ) : (
-          <span className="muted">—</span>
+          <Empty hint="Add phone" />
         )}
       </td>
-      <td className="contact-cell email">
+      <td {...editable} className={`contact-cell contact-col email ${editable ? 'editable' : ''}`}>
         {draft ? (
           <input
             className="contact-input"
@@ -141,17 +181,17 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
         ) : contact.email ? (
           <>
             {splitList(contact.email).map((email) => (
-              <a key={email} className="contact-value" href={`mailto:${email}`}>
+              <a key={email} className="contact-value" href={`mailto:${email}`} onClick={(e) => e.stopPropagation()}>
                 {email}
               </a>
             ))}
             <SourceNote source={contact.emailSource} />
           </>
         ) : (
-          <span className="muted">—</span>
+          <Empty hint="Add email" />
         )}
       </td>
-      <td className="contact-cell remarks">
+      <td {...editable} className={`contact-cell contact-col remarks ${editable ? 'editable' : ''}`}>
         {draft ? (
           <textarea
             className="contact-input"
@@ -161,66 +201,13 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
             onChange={change('remarks')}
             onKeyDown={escapeCancels}
             placeholder="e.g. Called HR, send CVs by Friday"
-            aria-label={`Remarks for ${job.title}`}
+            aria-label={`Notes for ${job.title}`}
           />
         ) : (
-          contact.remarks || <span className="muted">—</span>
+          contact.remarks || <Empty hint="Add note" />
         )}
       </td>
-      <td className="placement-cell">
-        {draft ? (
-          <div className="placement-edit">
-            <select
-              className="contact-input"
-              form={formId}
-              value={draft.status}
-              onChange={change('status')}
-              onKeyDown={escapeCancels}
-              aria-label={`Placement status for ${job.title}`}
-            >
-              <option value="">Not started</option>
-              {PLACEMENT_STATUSES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <input
-              className="contact-input"
-              type="text"
-              form={formId}
-              value={draft.students}
-              onChange={change('students')}
-              onKeyDown={escapeCancels}
-              placeholder="Students, e.g. Asha, Ravi"
-              aria-label={`Students for ${job.title}`}
-            />
-            {draft.status === 'placed' && (
-              <label className="placed-count">
-                Placed
-                <input
-                  className="contact-input"
-                  type="number"
-                  min={1}
-                  max={50}
-                  form={formId}
-                  value={draft.placedCount}
-                  onChange={change('placedCount')}
-                  onKeyDown={escapeCancels}
-                />
-              </label>
-            )}
-          </div>
-        ) : placement.status ? (
-          <>
-            <span className={`status-badge status-${placement.status}`}>{statusLabel(placement.status)}</span>
-            {placement.status === 'placed' && <span className="contact-source">{placement.placedCount} placed</span>}
-            {placement.students && <span className="placement-students">{placement.students}</span>}
-          </>
-        ) : (
-          <span className="muted">—</span>
-        )}
-      </td>
+
       <td className="row-actions-cell">
         {draft ? (
           <form
@@ -231,10 +218,10 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
               submit();
             }}
           >
-            <button type="submit" className="small-button primary" disabled={saving}>
-              {saving ? 'Saving…' : 'Submit'}
+            <button type="submit" className="btn btn-sm btn-primary" disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
             </button>
-            <button type="button" className="small-button" onClick={cancel} disabled={saving}>
+            <button type="button" className="btn btn-sm" onClick={cancel} disabled={saving}>
               Cancel
             </button>
             {error && (
@@ -246,20 +233,20 @@ export default function JobRow({ job, courseName, onSaved }: Props) {
           </form>
         ) : (
           <div className="row-actions">
-            <button
-              type="button"
-              className="small-button"
-              onClick={startEditing}
-              title={contact.updatedAt ? `Last saved ${formatDateTime(contact.updatedAt)}` : undefined}
-              aria-label={`${hasDetails ? 'Edit' : 'Add'} HR contact and placement for ${job.title}`}
-            >
-              {hasDetails ? 'Edit' : 'Add'}
-            </button>
             {justSaved && (
               <span className="saved-note" role="status">
                 Saved
               </span>
             )}
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={startEditing}
+              title={contact.updatedAt ? `Edit · last saved ${formatDateTime(contact.updatedAt)}` : 'Edit phone, email and notes'}
+              aria-label={`Edit phone, email and notes for ${job.title}`}
+            >
+              <PencilIcon size={15} />
+            </button>
           </div>
         )}
       </td>
