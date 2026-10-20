@@ -1,4 +1,4 @@
-import { formatDay, formatNumber } from '@/lib/format';
+import { experienceRangeText, formatDay, formatNumber } from '@/lib/format';
 import type { ReportResponse } from '@/lib/types';
 
 // The weekly report as one 1080 x 1350 picture (portrait, fits Instagram and LinkedIn). Plain SVG with
@@ -31,7 +31,8 @@ export function weekChange(count: number, previous: number | null) {
   return Math.round(((count - previous) / previous) * 100);
 }
 
-export default function ReportImage({ report }: { report: ReportResponse }) {
+// nonFiltered: a report about the jobs our filters leave out, marked as such so it's never shared by mistake.
+export default function ReportImage({ report, nonFiltered = false }: { report: ReportResponse; nonFiltered?: boolean }) {
   const m = 72; // side margin
   const boxW = (REPORT_WIDTH - 2 * m - 24) / 2;
   const boxH = 250;
@@ -51,7 +52,7 @@ export default function ReportImage({ report }: { report: ReportResponse }) {
     >
       <rect width={REPORT_WIDTH} height={REPORT_HEIGHT} fill="#ffffff" />
       <text x={m} y={112} fontSize={26} fill={MUTED} letterSpacing={3}>
-        INDIA JOB MARKET · DATA ROLES
+        {nonFiltered ? 'INDIA JOB MARKET · NON-FILTERED' : 'INDIA JOB MARKET · DATA ROLES'}
       </text>
       <text x={REPORT_WIDTH - m} y={112} fontSize={30} fontWeight={700} fill={INK} textAnchor="end">
         {report.brand}
@@ -67,7 +68,7 @@ export default function ReportImage({ report }: { report: ReportResponse }) {
         {formatNumber(report.total)}
       </text>
       <text x={m} y={450} fontSize={30} fill={SOFT}>
-        new openings for {report.experience.min}–{report.experience.max} years&apos; experience
+        {nonFiltered ? 'new openings our filters leave out' : `new openings for ${experienceRangeText(report.experience)} years' experience`}
       </text>
 
       {report.courses.map((course, i) => {
@@ -128,7 +129,8 @@ export default function ReportImage({ report }: { report: ReportResponse }) {
         {clip(`Source: ${formatNumber(report.total)} job postings from ${report.platforms.join(', ')}, collected by ${report.brand}.`, 100)}
       </text>
       <text x={m} y={1328} fontSize={19} fill={MUTED}>
-        India only · large IT services firms excluded{updated ? ` · updated ${updated}` : ''}
+        {nonFiltered ? 'India only · only large IT firms, too little or unstated experience' : 'India only · large IT services firms excluded'}
+        {updated ? ` · updated ${updated}` : ''}
       </text>
     </svg>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDataView, viewParam, type DataView } from './dataView';
 import type { ApiState } from './types';
 
 export type QueryParams = Record<string, string | number | null | undefined>;
@@ -41,21 +42,31 @@ export async function sendJson<T>(path: string, method: 'PUT' | 'POST', body: un
   return data as T;
 }
 
-// Fetches whenever the URL changes. Keeps the previous data while reloading so the page doesn't jump.
+// apiUrl for the jobs the dashboard shows now (Filtered or Non-filtered), e.g. for CSV download links.
+export function useApiUrl() {
+  const { view } = useDataView();
+  return (path: string, params?: QueryParams) => apiUrl(path, { ...params, ...viewParam(view) });
+}
+
+// Fetches whenever the URL changes (also when the Filtered / Non-filtered switch changes, which adds
+// ?view=nonfiltered). Keeps the previous data while reloading so the page doesn't jump, except after a
+// switch: then the old data goes at once, so one set's numbers never show under the other's name.
 export function useApi<T>(path: string, params?: QueryParams): ApiState<T> {
-  const url = apiUrl(path, params);
-  const [state, setState] = useState<ApiState<T>>({ data: null, error: null, loading: true });
+  const { view, ready } = useDataView();
+  const url = apiUrl(path, { ...params, ...viewParam(view) });
+  const [state, setState] = useState<ApiState<T> & { view?: DataView }>({ data: null, error: null, loading: true });
 
   useEffect(() => {
+    if (!ready) return; // the remembered view isn't known yet
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true }));
+    setState((s) => (s.view === view ? { ...s, loading: true } : { data: null, error: null, loading: true, view }));
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`Could not load ${path} (${res.status})`);
         return res.json() as Promise<T>;
       })
       .then((data) => {
-        if (!cancelled) setState({ data, error: null, loading: false });
+        if (!cancelled) setState({ data, error: null, loading: false, view });
       })
       .catch((error: Error) => {
         if (!cancelled) setState((s) => ({ ...s, error, loading: false }));
@@ -63,7 +74,7 @@ export function useApi<T>(path: string, params?: QueryParams): ApiState<T> {
     return () => {
       cancelled = true;
     };
-  }, [url, path]);
+  }, [url, path, ready, view]);
 
   return state;
 }

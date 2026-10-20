@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { CSSProperties, ReactNode } from 'react';
 import { useApi } from '@/lib/api';
+import { useDataView } from '@/lib/dataView';
 import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, percent, PERIODS, periodFrom } from '@/lib/format';
+import { POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
 import type { CourseDetailResponse, CourseId, Meta, PostingAgeBucket, TrendsResponse } from '@/lib/types';
 import {
   ArrowDownIcon,
@@ -20,20 +22,21 @@ import {
   TrendIcon,
 } from './Icons';
 import { ExperienceColumns, RankList } from './Insights';
-import JobsTable, { useJobFilters, type JobFilters } from './JobsTable';
+import JobsTable from './JobsTable';
 import { CardHeader, Freshness, PageError, PageHeader, PageSection, PageSkeleton } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 import { Delta } from './StatTiles';
 import TrendChart from './TrendChart';
 
-const AGE_BUCKETS: { id: PostingAgeBucket; label: string }[] = [
-  { id: 'day', label: 'Under 1 day' },
-  { id: '3days', label: '1–3 days' },
-  { id: 'week', label: '4–7 days' },
-  { id: 'month', label: '1–4 weeks' },
-  { id: 'older', label: 'Over a month' },
-  { id: 'unknown', label: 'Date not shown' },
-];
+// A table number that shows its jobs in the job list when clicked (plain text when there are none).
+function CountButton({ count, label, onClick }: { count: number; label: string; onClick: () => void }) {
+  if (!count) return <>{formatNumber(count)}</>;
+  return (
+    <button type="button" className="cell-btn" onClick={onClick} aria-label={`${label}: ${formatNumber(count)}. Show them`}>
+      {formatNumber(count)}
+    </button>
+  );
+}
 
 // A number card that, when clicked, shows the jobs it counts in the job list below.
 function CardButton({
@@ -90,6 +93,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
   const period = periodFrom(useSearchParams().get('days'));
   const { days } = period;
   const jobFilters = useJobFilters();
+  const { view } = useDataView();
 
   const meta = useApi<Meta>('meta');
   const detail = useApi<CourseDetailResponse>(`course/${courseId}`, { days });
@@ -101,12 +105,12 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
   const d = detail.data;
   const course = d.course;
   const color = COURSE_COLORS[courseId];
-  const experience = experienceBands(meta.data.filters.experience).map((b) => ({ id: b.id, name: b.label, count: d.experience[b.id] ?? 0 }));
+  const experience = experienceBands(meta.data.filters.experience, view).map((b) => ({ id: b.id, name: b.label, count: d.experience[b.id] ?? 0 }));
   const topExperience = experience.reduce((best, e) => (e.count > best.count ? e : best), experience[0]);
   const loading = detail.loading ? 'is-loading' : '';
 
-  // A card's jobs, in the job list (every other filter cleared, so the list holds exactly what the card
-  // counts), scrolled into view.
+  // The jobs behind a card or a chart, in the job list (every other filter cleared, so the list holds
+  // exactly what that number counts), scrolled into view.
   const showJobs = (only: Partial<JobFilters>) => {
     jobFilters.show(only);
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -203,7 +207,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
               level={3}
               icon={<LayersIcon />}
               title="Where they come from"
-              description="Counted once, on the site posted first. “On site” includes jobs also found elsewhere."
+              description="Counted once, on the site posted first. “On site” includes jobs also found elsewhere. Click a number to see its jobs."
             />
             <div className="table-wrap">
               <table className="data-table">
@@ -230,18 +234,22 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
                           <span className="cell-bar-track" aria-hidden="true">
                             {p.counted > 0 && <span className="cell-bar-fill" style={{ width: `${(p.counted / d.total) * 100}%` }} />}
                           </span>
-                          {formatNumber(p.counted)}
+                          <CountButton count={p.counted} label={`First posted on ${p.platform}`} onClick={() => showJobs({ primary: p.platform })} />
                         </span>
                       </td>
                       <td className="num muted">{percent(p.counted, d.total)}</td>
-                      <td className="num">{formatNumber(p.listed)}</td>
+                      <td className="num">
+                        <CountButton count={p.listed} label={`Listed on ${p.platform}`} onClick={() => showJobs({ platform: p.platform })} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
                     <th scope="row">All sites</th>
-                    <td className="num">{formatNumber(d.total)}</td>
+                    <td className="num">
+                      <CountButton count={d.total} label="All new jobs" onClick={() => showJobs({})} />
+                    </td>
                     <td className="num muted">{d.total ? '100%' : '—'}</td>
                     <td />
                   </tr>
@@ -251,32 +259,47 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
           </section>
 
           <section className="card">
-            <CardHeader level={3} icon={<ClockIcon />} title="How fresh the posts were" description="Time from the site's posting date to when we found the job" />
-            <RankList items={AGE_BUCKETS.map((b) => ({ name: b.label, count: d.postingAge[b.id] ?? 0 }))} color={color} />
+            <CardHeader
+              level={3}
+              icon={<ClockIcon />}
+              title="How fresh the posts were"
+              description="Time from the site's posting date to when we found the job · click a bar to see its jobs"
+            />
+            <RankList
+              items={POSTING_AGES.map((b) => ({ id: b.id, name: b.label, count: d.postingAge[b.id as PostingAgeBucket] ?? 0 }))}
+              color={color}
+              selected={jobFilters.filters.age}
+              onSelect={(item) => showJobs({ age: item.id })}
+            />
           </section>
         </div>
 
         <section className="card">
-          <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="The last 30 days" />
-          <TrendChart courses={[course]} state={trends} />
+          <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="The last 30 days · click a day to see its jobs" />
+          <TrendChart courses={[course]} state={trends} onSelectDay={(day) => showJobs({ day })} />
         </section>
 
         <div className={`grid-2 ${loading}`}>
           <section className="card">
-            <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings for this course" />
-            <RankList items={d.companies} color={color} />
+            <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings for this course · click one to see its jobs" />
+            <RankList items={d.companies} color={color} selected={jobFilters.filters.company} onSelect={(item) => showJobs({ company: item.name })} />
           </section>
           <section className="card">
-            <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where these openings are" />
-            <RankList items={d.cities} color={color} />
+            <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where these openings are · click one to see its jobs" />
+            <RankList items={d.cities} color={color} selected={jobFilters.filters.city} onSelect={(item) => showJobs({ city: item.name })} />
           </section>
           <section className="card card-grow">
-            <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post" />
-            <ExperienceColumns items={d.total ? experience : []} color={color} />
+            <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post (5+ = more than 5) · click a column" />
+            <ExperienceColumns
+              items={d.total ? experience : []}
+              color={color}
+              selected={jobFilters.filters.exp}
+              onSelect={(item) => showJobs({ exp: item.id })}
+            />
           </section>
           <section className="card">
-            <CardHeader level={3} icon={<SparklesIcon />} title="Most requested skills" description="Job posts naming each skill" />
-            <RankList items={d.skills} color={color} />
+            <CardHeader level={3} icon={<SparklesIcon />} title="Most requested skills" description="Job posts naming each skill · click one to see them" />
+            <RankList items={d.skills} color={color} selected={jobFilters.filters.skill} onSelect={(item) => showJobs({ skill: item.name })} />
           </section>
         </div>
       </PageSection>

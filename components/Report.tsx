@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { useApi } from '@/lib/api';
-import { formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
+import { experienceRangeText, formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
+import { useDataView } from '@/lib/dataView';
 import type { ReportResponse } from '@/lib/types';
 import ReportImage, { REPORT_HEIGHT, REPORT_WIDTH, reportRange, weekChange } from './ReportImage';
 import { CheckIcon, CopyIcon, DownloadIcon, ImageIcon, MessageIcon, ReportIcon } from './Icons';
@@ -14,14 +15,17 @@ const HOW_TO = [
   { title: 'Copy the message', text: 'paste it into a WhatsApp chat or group' },
 ];
 
-// The same report as WhatsApp text (*bold* is WhatsApp's own formatting).
-function whatsappText(r: ReportResponse) {
+// The same report as WhatsApp text (*bold* is WhatsApp's own formatting). nonFiltered: the report is
+// about the jobs our filters leave out, and says so.
+function whatsappText(r: ReportResponse, nonFiltered: boolean) {
   const n = formatNumber;
   const lines = [
-    '*India job market: data roles*',
+    nonFiltered ? '*India job market: data roles (non-filtered)*' : '*India job market: data roles*',
     `${reportRange(r)} (last 7 days)`,
     '',
-    `*${n(r.total)} new openings* for ${r.experience.min}–${r.experience.max} years' experience`,
+    nonFiltered
+      ? `*${n(r.total)} new openings* that our filters leave out (large IT services firms, too little experience, or experience not stated)`
+      : `*${n(r.total)} new openings* for ${experienceRangeText(r.experience)} years' experience`,
     '',
   ];
   for (const course of r.courses) {
@@ -35,7 +39,8 @@ function whatsappText(r: ReportResponse) {
   if (r.cities.length) lines.push(`*Top cities*: ${r.cities.map((c) => c.name).join(', ')}`);
   lines.push(
     '',
-    `Source: ${n(r.total)} job postings from ${r.platforms.join(', ')}, collected by ${r.brand}. India only; large IT services firms excluded.`,
+    `Source: ${n(r.total)} job postings from ${r.platforms.join(', ')}, collected by ${r.brand}. India only; ` +
+      (nonFiltered ? 'only jobs our filters leave out.' : 'large IT services firms excluded.'),
   );
   return lines.join('\n');
 }
@@ -74,11 +79,12 @@ export default function Report() {
   const textBox = useRef<HTMLTextAreaElement>(null);
   const [message, setMessage] = useState('');
   const report = state.data;
+  const nonFiltered = useDataView().view === 'nonfiltered';
 
   if (state.error) return <PageError title="Could not load the report" error={state.error} />;
   if (!report) return <PageSkeleton />;
 
-  const text = whatsappText(report);
+  const text = whatsappText(report, nonFiltered);
   const flash = (note: string) => {
     setMessage(note);
     setTimeout(() => setMessage(''), 3000);
@@ -87,7 +93,7 @@ export default function Report() {
     const svg = imageBox.current?.querySelector('svg');
     if (!svg) return;
     try {
-      await downloadPng(svg, `job-market-report-${report.to}.png`);
+      await downloadPng(svg, `${nonFiltered ? 'non-filtered-' : ''}job-market-report-${report.to}.png`);
       flash('Image downloaded');
     } catch (err) {
       flash((err as Error).message);
@@ -141,7 +147,7 @@ export default function Report() {
             }
           />
           <div className="report-preview" ref={imageBox}>
-            <ReportImage report={report} />
+            <ReportImage report={report} nonFiltered={nonFiltered} />
           </div>
         </section>
         <section className="card">

@@ -1,6 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
-import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, percent, type ExperienceRange } from '@/lib/format';
+import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, type ExperienceRange } from '@/lib/format';
+import { useDataView } from '@/lib/dataView';
+import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
 import { ExternalIcon, SparklesIcon } from './Icons';
 import { RankList } from './Insights';
@@ -26,16 +28,18 @@ interface Props {
   experience: ExperienceRange;
   requested?: InsightsResponse['skills']; // most-requested skills per course, from /api/insights
   loading?: boolean;
+  onSelect: ShowJobs; // a most-requested skill was clicked: show the course's jobs asking for it
 }
 
 // "Skills employers ask for": for one course, the skills its job posts ask for most, and a planner:
 // which skills to add, one after another, would let students match how many more job posts, and which
 // jobs those are (server/src/skillGaps.js).
-export default function SkillsPanel({ courses, days, experience, requested, loading }: Props) {
+export default function SkillsPanel({ courses, days, experience, requested, loading, onSelect }: Props) {
   const [courseId, setCourseId] = useState<CourseId>(courses[0].id);
   const [picked, setPicked] = useState<string[] | null>(null); // null = the ladder's first step
   const [showAllJobs, setShowAllJobs] = useState(false);
   const gaps = useApi<SkillGapsResponse>('skill-gaps', { course: courseId, days });
+  const { view } = useDataView();
   const data = gaps.data;
   const color = COURSE_COLORS[courseId];
   const courseName = courses.find((c) => c.id === courseId)?.name ?? '';
@@ -90,8 +94,13 @@ export default function SkillsPanel({ courses, days, experience, requested, load
       <div className={`skills-layout ${loading || gaps.loading ? 'is-loading' : ''}`} style={{ '--course': color } as CSSProperties}>
         <div className="skills-col">
           <h4 className="subhead">Most requested skills</h4>
-          <p className="subhead-note">Job posts naming each skill</p>
-          <RankList items={requested?.[courseId] ?? []} color={color} empty={`No ${courseName} job posts in this period yet.`} />
+          <p className="subhead-note">Job posts naming each skill · click one to see them</p>
+          <RankList
+            items={requested?.[courseId] ?? []}
+            color={color}
+            empty={`No ${courseName} job posts in this period yet.`}
+            onSelect={(item) => onSelect({ course: courseId, skill: item.name }, `${courseName} jobs asking for ${item.name}`)}
+          />
         </div>
 
         <div className="skills-col">
@@ -211,7 +220,7 @@ export default function SkillsPanel({ courses, days, experience, requested, load
                   Counted from {formatNumber(data.postings)} {courseName} job posts collected
                   {data.source.platforms.length ? ` from ${data.source.platforms.join(', ')}` : ''}
                   {data.source.firstSeenFrom ? `, first seen ${formatDate(data.source.firstSeenFrom)} – ${formatDate(data.source.firstSeenTo)}` : ''}{' '}
-                  (India, {experience.min}–{experience.max} years&apos; experience). Last updated {formatDateTime(data.source.lastRefreshed)}.
+                  (India, {view === 'nonfiltered' ? 'only the jobs our filters leave out' : `${experienceRangeText(experience)} years' experience`}). Last updated {formatDateTime(data.source.lastRefreshed)}.
                 </p>
                 <p>
                   Students &ldquo;match&rdquo; a job post when the course teaches every skill it names, out of the {data.trackedSkillCount} we

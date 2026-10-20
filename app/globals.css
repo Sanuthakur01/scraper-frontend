@@ -358,6 +358,127 @@ button {
   gap: 8px;
 }
 
+/* ---------- Filtered / Non-filtered switch (right of light/dark) ---------- */
+
+.app-header-view {
+  display: flex;
+  align-items: center;
+}
+
+/* Two halves; the knob slides to the half shown: left = Filtered, right = Non-filtered (amber) */
+.view-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  height: 36px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: pan-y; /* a sideways swipe is ours, not the page's */
+  user-select: none;
+  box-shadow: var(--shadow-xs);
+}
+
+.view-switch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.view-switch-option {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 12px;
+  white-space: nowrap;
+  transition: color 0.18s;
+}
+
+.view-switch:not(.on) .view-switch-option:first-of-type,
+.view-switch.on .view-switch-option:last-of-type {
+  color: var(--text-primary);
+}
+
+.view-switch.on .view-switch-option:last-of-type {
+  color: var(--warn-text);
+}
+
+.view-switch-knob {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs), 0 0 0 1px var(--border);
+  transition: transform 0.2s ease, background 0.2s, box-shadow 0.2s;
+}
+
+.view-switch.on .view-switch-knob {
+  transform: translateX(100%);
+  background: var(--warn-bg);
+  box-shadow: 0 0 0 1px var(--warn-border);
+}
+
+/* Under the top bar while Non-filtered data is shown */
+.view-note {
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+  color: var(--warn-text);
+}
+
+.view-note-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  font-size: 13px;
+}
+
+.view-note-inner > svg {
+  flex: none;
+}
+
+.view-note-inner p {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-note-inner .btn {
+  flex: none;
+}
+
+/* Why a Non-filtered job is left out, on its row and in the panel */
+.reason-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-top: 5px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.drawer-job-meta .reason-pill {
+  margin-top: 0;
+}
+
 /* ---------- App footer ---------- */
 
 .app-footer {
@@ -1423,8 +1544,22 @@ a.kpi-course:hover .kpi-cta svg {
   background: var(--surface-hover);
 }
 
+/* Expand and the ← → buttons, at the right end of the job list's toolbar */
 .toolbar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+}
+
+.scroll-arrows {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.btn-icon {
+  width: 36px;
+  padding: 0;
 }
 
 .btn-link {
@@ -1570,6 +1705,48 @@ a.kpi-course:hover .kpi-cta svg {
   padding-right: 0;
 }
 
+/* A table number that shows its jobs when clicked */
+.cell-btn {
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--link);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted color-mix(in srgb, var(--link) 45%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cell-btn:hover {
+  background: var(--accent-soft);
+  text-decoration-style: solid;
+}
+
+/* A number card's value that shows its jobs when clicked (the facts under the platform chart) */
+.stat-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.stat-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 /* A number with a small bar behind it, for table cells */
 .cell-bar {
   display: inline-flex;
@@ -1598,7 +1775,7 @@ a.kpi-course:hover .kpi-cta svg {
 
 /* ---------- Job list ---------- */
 
-/* When a card above opens the list, its top stops below the sticky top bar */
+/* When a card or a chart opens the list, its top stops below the sticky top bar */
 #jobs {
   scroll-margin-top: 80px;
 }
@@ -1688,29 +1865,33 @@ a.kpi-course:hover .kpi-cta svg {
   padding: 12px 10px;
 }
 
-/* The label over the three columns the team fills in: a tab sitting on the header row */
-.jobs-table thead .group-row th {
-  padding: 0;
-  background: var(--surface);
-  border-top: 0;
-  border-bottom: 0;
-}
+/* The Job column stays at the left edge while the other columns scroll under it (not on phones, where
+   it would take most of the width), with a shadow once the table has been scrolled. */
+@media (min-width: 641px) {
+  .jobs-table th:first-child,
+  .jobs-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
 
-.jobs-table thead .group-row .actions-head {
-  box-shadow: none;
-}
+  .jobs-table thead th:first-child {
+    background: var(--surface-2);
+  }
 
-.group-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px 8px 0 0;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+  .jobs-table tbody tr:hover td:first-child {
+    background: var(--surface-2);
+  }
+
+  .jobs-table tbody tr.is-editing td:first-child {
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  }
+
+  .table-wrap.scrolled .jobs-table th:first-child,
+  .table-wrap.scrolled .jobs-table td:first-child {
+    box-shadow: inset -1px 0 0 var(--border), 8px 0 10px -8px rgba(16, 24, 40, 0.22);
+  }
 }
 
 .jobs-table thead th.contact-col {
@@ -1880,6 +2061,58 @@ a.kpi-course:hover .kpi-cta svg {
   margin: 0;
 }
 
+/* While a row is being edited: ✓ saves it, ✕ discards the changes */
+.icon-action {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: background 0.12s, color 0.12s, filter 0.12s;
+}
+
+.icon-action:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.icon-action.confirm,
+.icon-action.confirm:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 4px 10px -4px rgba(79, 70, 229, 0.6);
+}
+
+.icon-action.confirm:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.icon-action:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .contact-cell {
   min-width: 110px;
 }
@@ -1896,8 +2129,11 @@ a.kpi-course:hover .kpi-cta svg {
   overflow-wrap: anywhere;
 }
 
+/* Only the number or address itself is the call / email link; the rest of the cell opens it for editing */
 .contact-value {
   display: block;
+  width: fit-content;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -1935,6 +2171,102 @@ textarea.contact-input {
 /* While a row is being edited, its notes column grows with the box */
 .jobs-table tr.is-editing .contact-cell.remarks {
   max-width: none;
+}
+
+/* Several phone numbers or emails while editing: one box each, × to remove, "+ Add another" below */
+.jobs-table tr.is-editing .contact-cell {
+  min-width: 170px;
+  vertical-align: top;
+}
+
+.jobs-table tr.is-editing .contact-cell.email {
+  min-width: 220px;
+}
+
+.entry-list {
+  display: grid;
+  gap: 6px;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry .contact-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.entry-remove:hover {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.entry-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.entry-add:hover {
+  background: var(--accent-soft);
+}
+
+/* A filled phone or email cell: a small + on the right saying that clicking adds another one (always
+   there, so it also works on touch screens; stronger while pointed at) */
+.jobs-table .contact-cell.has-value {
+  position: relative;
+  padding-right: 32px;
+}
+
+.add-more {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent-text);
+  transform: translateY(-50%);
+  transition: background 0.12s, color 0.12s;
+}
+
+.jobs-table tbody tr:hover .contact-cell.has-value .add-more {
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
+.jobs-table tbody tr:hover .contact-cell.has-value:hover .add-more {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .form-error {
@@ -2024,10 +2356,30 @@ textarea.contact-input {
   gap: 12px;
 }
 
+/* A site's name (and its total) opens all its jobs; each coloured segment, that course's jobs there */
 .pbar-label {
+  justify-self: start;
+  margin-left: -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
   font-weight: 500;
   font-size: 13px;
   color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pbar-label:hover:not(:disabled),
+.pbar-total:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--accent-text);
+}
+
+.pbar-label:disabled,
+.pbar-total:disabled {
+  cursor: default;
 }
 
 .pbar-track {
@@ -2048,25 +2400,48 @@ textarea.contact-input {
 
 .pbar-seg {
   min-width: 3px;
-  cursor: default;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
 }
 
 .pbar-seg:hover,
 .pbar-seg:focus-visible {
-  filter: brightness(1.12);
+  filter: brightness(1.15);
   outline: none;
 }
 
+/* The bar clips an outline, so the keyboard focus ring is drawn inside the segment */
+.pbar-seg:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--text-primary);
+}
+
 .pbar-total {
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .trend-chart {
   height: 260px;
   margin-top: 14px;
+}
+
+.trend-chart.clickable .recharts-surface {
+  cursor: pointer;
+}
+
+.tooltip .tooltip-hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
 }
 
 .chart-note {
@@ -2108,9 +2483,42 @@ textarea.contact-input {
 .exp-columns li {
   position: relative;
   display: grid;
+  min-width: 0;
+}
+
+/* One column: the bar with its count over it, and the label under the baseline. A button when
+   clicking it shows its jobs. */
+.exp-col {
+  display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 8px;
   min-width: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+}
+
+button.exp-col {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+button.exp-col:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+button.exp-col:hover:not(:disabled) .exp-bar {
+  filter: brightness(1.12);
+}
+
+button.exp-col[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--course, var(--accent)) 10%, transparent);
+}
+
+button.exp-col:disabled {
+  cursor: default;
 }
 
 .exp-track {
@@ -2198,11 +2606,42 @@ textarea.contact-input {
   gap: 12px;
 }
 
-.rank-list li {
+.rank-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 5px 12px;
   font-size: 13.5px;
+}
+
+/* A row that shows its jobs when clicked: the hover fill reaches a little past the bar */
+button.rank-row {
+  width: calc(100% + 16px);
+  margin: -5px -8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+button.rank-row:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+button.rank-row:hover:not(:disabled) .rank-name {
+  color: var(--accent-text);
+}
+
+button.rank-row[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--course, var(--accent)) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--course, var(--accent)) 40%, transparent);
+}
+
+button.rank-row:disabled {
+  cursor: default;
 }
 
 .rank-name {
@@ -2537,9 +2976,186 @@ textarea.contact-input {
   white-space: nowrap;
 }
 
+/* ---------- Side panel: the jobs behind a clicked chart (dashboard) ---------- */
+
+.drawer:modal {
+  inset: 0 0 0 auto;
+  width: min(560px, 100vw);
+  max-width: 100vw;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.drawer::backdrop {
+  background: rgba(16, 24, 40, 0.45);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* The page behind doesn't scroll while the panel is open */
+html:has(.drawer[open]) {
+  overflow: hidden;
+}
+
+.drawer-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  animation: drawer-in 0.22s ease-out;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.drawer-heading h2 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.drawer-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.icon-btn.drawer-close {
+  width: 34px;
+  height: 34px;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 22px;
+}
+
+.drawer-body > .empty {
+  padding: 24px 0;
+}
+
+.drawer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.drawer-job {
+  display: grid;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-job:last-child {
+  border-bottom: 0;
+}
+
+.drawer-job-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.drawer-job-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+a.drawer-job-title:hover {
+  color: var(--accent-text);
+}
+
+.drawer-job-posted {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.drawer-job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.drawer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.drawer-contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.drawer-pager {
+  padding: 12px 22px;
+}
+
 /* ---------- Smaller screens ---------- */
 
 @media (max-width: 1100px) {
+  /* Room for the Filtered / Non-filtered switch: the logo stays, the name goes */
+  .brand-text {
+    display: none;
+  }
   .kpis {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -2570,10 +3186,29 @@ textarea.contact-input {
 }
 
 @media (max-width: 640px) {
+  /* The Filtered / Non-filtered switch gets a full-width row under the pages and light/dark */
   .app-header-inner {
-    padding: 0 16px;
-    gap: 12px;
-    height: 58px;
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    gap: 8px 12px;
+    height: auto;
+  }
+  .app-header-view {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .view-switch {
+    width: 100%;
+  }
+  .view-note-inner {
+    flex-wrap: wrap;
+    padding: 10px 16px;
+  }
+  .view-note-inner p {
+    flex-basis: calc(100% - 28px); /* the button goes under the text */
+  }
+  .view-note-inner .btn {
+    margin-left: 26px;
   }
   .brand-text,
   .nav-icon,
@@ -2638,6 +3273,12 @@ textarea.contact-input {
   }
   .pager {
     padding: 12px 16px;
+  }
+  .drawer-header {
+    padding: 16px;
+  }
+  .drawer-body {
+    padding: 4px 16px;
   }
   .pbar-row {
     grid-template-columns: 76px 1fr;

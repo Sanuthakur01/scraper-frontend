@@ -1,13 +1,29 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobRow from '@/components/JobRow';
-import { apiUrl, useApi } from '@/lib/api';
+import { useApi, useApiUrl } from '@/lib/api';
+import { useDataView } from '@/lib/dataView';
 import { experienceBands, formatNumber } from '@/lib/format';
+import { filterChips, type JobFilters, type JobFilterState } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse, Meta } from '@/lib/types';
-import { CloseIcon, ColumnsIcon, DownloadIcon, ListIcon, MailIcon, NoteIcon, PencilIcon, PhoneIcon, SearchIcon } from './Icons';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  ColumnsIcon,
+  DownloadIcon,
+  ListIcon,
+  MailIcon,
+  NoteIcon,
+  PhoneIcon,
+  SearchIcon,
+} from './Icons';
 import { CardHeader } from './PageParts';
 
 // The same test as the server's count (GET /api/jobs withContact): a phone, email or note.
 const hasContact = ({ contact }: Job) => Boolean(contact.phone || contact.email || contact.remarks);
+
+// A dropdown's choices, plus the current value when a chart set one that isn't among them.
+const withValue = (options: string[], value: string) => (value && !options.includes(value) ? [...options, value] : options);
 
 // "HR details for 12 of 2,559 jobs", over a thin bar: how far the team has got with this list.
 function ContactProgress({ done, total }: { done: number; total: number }) {
@@ -23,45 +39,7 @@ function ContactProgress({ done, total }: { done: number; total: number }) {
   );
 }
 
-// The job list's filters, sent to GET /api/jobs (and jobs.csv) as they are. '' = not filtered.
-export interface JobFilters {
-  course: string;
-  platform: string;
-  city: string;
-  exp: string; // experience: '2'…'5'
-  sites: string; // '2': only jobs listed on two or more sites
-  salary: string; // 'shown': only jobs whose post shows a salary
-  q: string; // search text
-}
-
-export const NO_FILTERS: JobFilters = { course: '', platform: '', city: '', exp: '', sites: '', salary: '', q: '' };
-
-// The job list's filters, kept by the page that shows the list so other parts of the page can set
-// them too (the cards above the list on a course page).
-export function useJobFilters() {
-  const [filters, setFilters] = useState<JobFilters>(NO_FILTERS);
-  const [search, setSearch] = useState(''); // as typed; filters.q follows it once typing pauses
-
-  useEffect(() => {
-    const timer = setTimeout(() => setFilters((f) => (f.q === search ? f : { ...f, q: search })), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // Exactly these filters, every other one cleared (and the search box emptied).
-  const show = (only: Partial<JobFilters>) => {
-    setFilters({ ...NO_FILTERS, ...only });
-    setSearch('');
-  };
-  // True when the list shows exactly these filters and nothing else.
-  const showing = (only: Partial<JobFilters>) =>
-    (Object.keys(NO_FILTERS) as (keyof JobFilters)[]).every((key) => filters[key] === (only[key] ?? ''));
-
-  return { filters, setFilters, search, setSearch, show, showing };
-}
-
-export type JobFilterState = ReturnType<typeof useJobFilters>;
-
-// A filter that has no dropdown (set by a card above the list): its name, and × to remove it.
+// A filter that has no dropdown (set by a card or a chart): its name, and × to remove it.
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="filter-chip">
@@ -71,6 +49,38 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
       </button>
     </span>
   );
+}
+
+// The ← → buttons: whether the table can scroll each way, and scrolling it by most of its width.
+function useSideScroll() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const update = () => setEdges({ left: box.scrollLeft > 1, right: box.scrollLeft + box.clientWidth < box.scrollWidth - 1 });
+    update();
+    box.addEventListener('scroll', update, { passive: true });
+    // The table gets wider on Expand and when rows load; the box narrower when the window does.
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    const table = box.querySelector('table');
+    if (table) observer.observe(table);
+    return () => {
+      box.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scroll = (direction: 1 | -1) => {
+    const box = ref.current;
+    if (!box) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    box.scrollBy({ left: direction * Math.max(240, box.clientWidth * 0.6), behavior: still ? 'auto' : 'smooth' });
+  };
+
+  return { ref, ...edges, scroll };
 }
 
 interface Props {
@@ -83,7 +93,7 @@ interface Props {
 }
 
 // The job list: search and filters, one row per job (each job once, however many sites list it), with
-// the HR phone, email and notes the team fills in. Expand shows more columns.
+// the HR phone, email and notes the team fills in. Expand shows more columns; ← → scroll them.
 export default function JobsTable({ courses, meta, days, filterState, lockedCourse, title = 'Jobs' }: Props) {
   const { filters, setFilters, search, setSearch, show } = filterState;
   const [page, setPage] = useState(1);
@@ -94,8 +104,13 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
   // Saves since the list last loaded that added (+1) or removed (-1) a job's HR details, so the
   // progress line moves at once. A reload's count already includes them, so it counts from zero again.
   const [contactChange, setContactChange] = useState<{ base: JobsResponse | null; n: number }>({ base: null, n: 0 });
+  const side = useSideScroll();
+  const { view } = useDataView();
+  const apiUrl = useApiUrl();
 
-  useEffect(() => setPage(1), [filters, days]);
+  useEffect(() => {
+    setPage(1);
+  }, [filters, days]);
 
   const params = { ...filters, ...(lockedCourse ? { course: lockedCourse } : {}), days };
   const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: 25 });
@@ -158,52 +173,66 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
         )}
         <select className="select" value={filters.platform} onChange={setFilter('platform')} aria-label="Site">
           <option value="">All sites</option>
-          {meta.platforms.map((p) => (
+          {withValue(meta.platforms, filters.platform).map((p) => (
             <option key={p}>{p}</option>
           ))}
         </select>
         <select className="select" value={filters.city} onChange={setFilter('city')} aria-label="City">
           <option value="">All cities</option>
-          {meta.cities.map((city) => (
+          {withValue(meta.cities, filters.city).map((city) => (
             <option key={city}>{city}</option>
           ))}
         </select>
         <select className="select" value={filters.exp} onChange={setFilter('exp')} aria-label="Experience">
           <option value="">Any experience</option>
-          {experienceBands(meta.filters.experience).map((b) => (
+          {experienceBands(meta.filters.experience, view).map((b) => (
             <option key={b.id} value={b.id}>
-              {b.label}
+              {b.id === '5+' ? '5+ yrs (more than 5)' : b.label}
             </option>
           ))}
         </select>
-        {filters.sites && <FilterChip label="Listed on 2+ sites" onRemove={clearFilter('sites')} />}
-        {filters.salary && <FilterChip label="Salary shown" onRemove={clearFilter('salary')} />}
+        {filterChips(filters).map((chip) => (
+          <FilterChip key={chip.key} label={chip.label} onRemove={clearFilter(chip.key)} />
+        ))}
         {hasFilters && (
           <button type="button" className="btn-link" onClick={() => show({})}>
             Clear filters
           </button>
         )}
-        <button type="button" className="btn toolbar-end" aria-pressed={expanded} onClick={() => setExpanded((v) => !v)}>
-          <ColumnsIcon /> {expanded ? 'Fewer columns' : 'Expand'}
-        </button>
+        <div className="toolbar-end">
+          <button type="button" className="btn" aria-pressed={expanded} onClick={() => setExpanded((v) => !v)}>
+            <ColumnsIcon /> {expanded ? 'Fewer columns' : 'Expand'}
+          </button>
+          <div className="scroll-arrows" role="group" aria-label="Scroll the table sideways">
+            <button
+              type="button"
+              className="btn btn-icon"
+              onClick={() => side.scroll(-1)}
+              disabled={!side.left}
+              aria-label="Scroll the table left"
+              title="Scroll left"
+            >
+              <ChevronLeftIcon size={18} />
+            </button>
+            <button
+              type="button"
+              className="btn btn-icon"
+              onClick={() => side.scroll(1)}
+              disabled={!side.right}
+              aria-label="Scroll the table right"
+              title="Scroll right"
+            >
+              <ChevronRightIcon size={18} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {jobs.error && <p className="empty">Could not load jobs: {jobs.error.message}</p>}
 
-      <div className={`table-wrap ${jobs.loading ? 'is-loading' : ''}`}>
+      <div ref={side.ref} className={`table-wrap ${side.left ? 'scrolled' : ''} ${jobs.loading ? 'is-loading' : ''}`}>
         <table className={`data-table jobs-table ${expanded ? 'expanded' : ''}`}>
           <thead>
-            <tr className="group-row">
-              <th scope="colgroup" colSpan={expanded ? 8 : 4} className="group-job">
-                <span className="sr-only">Job details</span>
-              </th>
-              <th scope="colgroup" colSpan={3} className="group-contact">
-                <span className="group-label">
-                  <PencilIcon size={12} /> HR contact · click a cell to fill it in
-                </span>
-              </th>
-              <th className="actions-head" />
-            </tr>
             <tr>
               <th scope="col">Job</th>
               <th scope="col">Experience</th>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import AppHeader from '@/components/AppHeader';
+import { NonFilteredNote } from '@/components/DataViewToggle';
+import { DataViewProvider } from '@/lib/dataView';
 import './globals.css';
 
 // Downloaded at build time and served with the site: no request to Google from the browser.
@@ -22,8 +24,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <AppHeader />
-        {children}
+        <DataViewProvider>
+          <AppHeader />
+          <NonFilteredNote />
+          {children}
+        </DataViewProvider>
         <footer className="app-footer">
           <div className="app-footer-inner">
             <span className="app-footer-brand">IJF Job Tracker</span>

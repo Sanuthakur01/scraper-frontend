@@ -73,6 +73,12 @@ export const ChevronLeftIcon = (p: P) => (
   </Icon>
 );
 
+export const ChevronRightIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="m9 18 6-6-6-6" />
+  </Icon>
+);
+
 export const SearchIcon = (p: P) => (
   <Icon {...p}>
     <circle cx="11" cy="11" r="7" />

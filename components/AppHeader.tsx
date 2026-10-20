@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import DataViewToggle from './DataViewToggle';
 import { DashboardIcon, ReportIcon, UsersIcon } from './Icons';
 import ThemeToggle from './ThemeToggle';
 
@@ -13,7 +14,8 @@ const PAGES: { href: string; label: string; short: string; icon: ReactNode; matc
   { href: '/partners', label: 'Hiring partners', short: 'Partners', icon: <UsersIcon />, matches: (path) => path.startsWith('/partners') },
 ];
 
-// The bar across the top of every page: the product name, the three main pages, and light/dark.
+// The bar across the top of every page: the product name, the three main pages, light/dark, and the
+// Filtered / Non-filtered switch (on phones it gets a row of its own).
 export default function AppHeader() {
   const path = usePathname() ?? '/';
   return (
@@ -41,6 +43,9 @@ export default function AppHeader() {
         </nav>
         <div className="app-header-end">
           <ThemeToggle />
+        </div>
+        <div className="app-header-view">
+          <DataViewToggle />
         </div>
       </div>
     </header>

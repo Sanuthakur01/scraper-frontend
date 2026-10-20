@@ -31,6 +31,8 @@ interface Props {
 // all new jobs, the change vs the previous period when it can be compared) that opens its page.
 export default function StatTiles({ courses, state, period }: Props) {
   const current = state.data?.current ?? {};
+  // Until the numbers arrive (first load, or after the Filtered / Non-filtered switch): a dash, never 0.
+  const shown = (n: number) => (state.data ? formatNumber(n) : '—');
   const previous = state.data?.previous ?? {};
   const total = sumCounts(current);
 
@@ -43,7 +45,7 @@ export default function StatTiles({ courses, state, period }: Props) {
           </span>
           <span className="kpi-name">All courses</span>
         </div>
-        <p className="kpi-value">{formatNumber(total)}</p>
+        <p className="kpi-value">{shown(total)}</p>
         <p className="kpi-period">{period.title}</p>
         <Delta current={total} previous={sumCounts(previous)} label={period.previous} />
       </div>
@@ -63,7 +65,7 @@ export default function StatTiles({ courses, state, period }: Props) {
               </span>
               <span className="kpi-name">{course.name}</span>
             </div>
-            <p className="kpi-value">{formatNumber(count)}</p>
+            <p className="kpi-value">{shown(count)}</p>
             <div className="kpi-share">
               <span className="kpi-share-track" aria-hidden="true">
                 <span style={{ width: total ? `${(count / total) * 100}%` : 0 }} />

@@ -1,4 +1,5 @@
-import type { CourseId, Job } from './types';
+import type { DataView } from './dataView';
+import type { CourseId, Job, LeftOutReason } from './types';
 
 // Course colours follow the course everywhere (never re-assigned by rank or filter).
 export const COURSE_COLORS: Record<CourseId, string> = {
@@ -8,21 +9,40 @@ export const COURSE_COLORS: Record<CourseId, string> = {
   'production-support': 'var(--series-4)',
 };
 
+// The minimum experience of the jobs we keep: min years and up (max null = no upper limit).
 export interface ExperienceRange {
   min: number;
-  max: number;
+  max: number | null;
 }
 
-// The experience groups within the range of jobs we keep (2–5 years by default): one per year.
-// Ids match the server's experienceBand(): 'fresher' for 0, '1'…'5', '6+'.
-export function experienceBands({ min, max }: ExperienceRange) {
-  const bands = new Map<string, string>();
-  for (let years = min; years <= max; years++) {
-    const id = years <= 0 ? 'fresher' : years >= 6 ? '6+' : String(years);
-    bands.set(id, years <= 0 ? 'Fresher' : years >= 6 ? '6+ yrs' : `${years} yrs`);
+// Every experience group there is (the Non-filtered jobs can ask for any experience, or not say).
+const ALL_BANDS = [
+  { id: 'fresher', label: 'Fresher' },
+  { id: '1', label: '1 yr' },
+  { id: '2', label: '2 yrs' },
+  { id: '3', label: '3 yrs' },
+  { id: '4', label: '4 yrs' },
+  { id: '5', label: '5 yrs' },
+  { id: '5+', label: '5+ yrs' },
+  { id: 'unknown', label: 'Not stated' },
+];
+
+// The experience groups of the jobs shown: for the kept (Filtered) jobs one per year from the minimum
+// (2 by default) up to 5, then "5+ yrs" for jobs asking more than 5 years; for the Non-filtered jobs all
+// of them, Fresher and "Not stated" too. Each job is in exactly one group. Ids match the server's
+// experienceBand(): 'fresher', '1'…'5', '5+', 'unknown'.
+export function experienceBands({ min, max }: ExperienceRange, view: DataView = 'filtered') {
+  if (view === 'nonfiltered') return ALL_BANDS;
+  const bands: { id: string; label: string }[] = [];
+  for (let years = min; years <= 5 && (max == null || years <= max); years++) {
+    bands.push(years <= 0 ? { id: 'fresher', label: 'Fresher' } : { id: String(years), label: `${years} yrs` });
   }
-  return [...bands].map(([id, label]) => ({ id, label }));
+  if (max == null || max > 5) bands.push({ id: '5+', label: '5+ yrs' });
+  return bands;
 }
+
+// "2+" (no upper limit) or "2–5": the experience range in sentences.
+export const experienceRangeText = ({ min, max }: ExperienceRange) => (max == null ? `${min}+` : `${min}–${max}`);
 
 export interface Period {
   days: number;
@@ -39,6 +59,13 @@ export const PERIODS: Period[] = [
 
 // The period from the page address (?days=7), so it stays the same when moving between pages.
 export const periodFrom = (days: string | null) => PERIODS.find((p) => String(p.days) === days) ?? PERIODS[0];
+
+// Why a Non-filtered job is left out, in words (server: leftOutReason in config/filters.js).
+export const LEFT_OUT_LABELS: Record<LeftOutReason, string> = {
+  'big-company': 'Large IT services firm',
+  experience: 'Too little experience',
+  'no-experience': 'Experience not stated',
+};
 
 export const COURSE_IDS = Object.keys(COURSE_COLORS) as CourseId[];
 

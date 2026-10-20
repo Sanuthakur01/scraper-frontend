@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import { apiUrl, useApi } from '@/lib/api';
+import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDate, formatNumber, percent } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse } from '@/lib/types';
 import { BriefcaseIcon, BuildingIcon, DownloadIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
@@ -16,6 +16,7 @@ const hasContact = (p: Partner) => p.phones.length > 0 || p.emails.length > 0;
 export default function Partners() {
   const meta = useApi<Meta>('meta');
   const state = useApi<PartnersResponse>('partners');
+  const apiUrl = useApiUrl();
   const [search, setSearch] = useState('');
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
   const [showAll, setShowAll] = useState(false);

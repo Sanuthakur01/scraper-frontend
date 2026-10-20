@@ -22,7 +22,7 @@ export interface Meta {
   platforms: string[];
   cities: string[];
   scheduleLabel: string;
-  filters: { experience: { min: number; max: number }; excludedCompanies: string[] };
+  filters: { experience: { min: number; max: number | null }; excludedCompanies: string[] }; // max null: no upper limit
   lastRun: LastRun | null;
   demo: boolean;
 }
@@ -158,7 +158,10 @@ export interface Job {
   platforms: string[];
   links: Record<string, string>;
   contact: JobContact;
+  leftOutBy?: LeftOutReason; // Non-filtered jobs only: why our filters leave it out
 }
+
+export type LeftOutReason = 'big-company' | 'experience' | 'no-experience';
 
 // GET /api/report: the last 7 days, to share.
 export interface ReportResponse {
@@ -170,7 +173,7 @@ export interface ReportResponse {
   companies: NamedCount[];
   cities: NamedCount[];
   platforms: string[];
-  experience: { min: number; max: number };
+  experience: { min: number; max: number | null };
   brand: string;
   lastRefreshed: string | null;
 }
@@ -209,12 +212,15 @@ export interface JobContact {
   updatedAt: string | null; // when the typed-in details were last saved
 }
 
-// What PUT /api/jobs/:id/follow-up accepts. Empty strings clear a field.
+// What PUT /api/jobs/:id/follow-up accepts: one box per phone number and per email (up to
+// MAX_CONTACT_ENTRIES each; empty boxes are ignored). Nothing entered clears a field.
 export interface FollowUpInput {
-  phone: string;
-  email: string;
+  phone: string[];
+  email: string[];
   remarks: string;
 }
+
+export const MAX_CONTACT_ENTRIES = 5; // the server's MAX_ENTRIES (api/followUp.js)
 
 export interface JobsResponse {
   days: number;
