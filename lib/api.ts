@@ -51,13 +51,14 @@ export function useApiUrl() {
 // Fetches whenever the URL changes (also when the Filtered / Non-filtered switch changes, which adds
 // ?view=nonfiltered). Keeps the previous data while reloading so the page doesn't jump, except after a
 // switch: then the old data goes at once, so one set's numbers never show under the other's name.
-export function useApi<T>(path: string, params?: QueryParams): ApiState<T> {
+// skip: don't fetch (yet), e.g. when a value the request needs is missing.
+export function useApi<T>(path: string, params?: QueryParams, { skip = false }: { skip?: boolean } = {}): ApiState<T> {
   const { view, ready } = useDataView();
   const url = apiUrl(path, { ...params, ...viewParam(view) });
   const [state, setState] = useState<ApiState<T> & { view?: DataView }>({ data: null, error: null, loading: true });
 
   useEffect(() => {
-    if (!ready) return; // the remembered view isn't known yet
+    if (!ready || skip) return; // the remembered view isn't known yet, or nothing to fetch
     let cancelled = false;
     setState((s) => (s.view === view ? { ...s, loading: true } : { data: null, error: null, loading: true, view }));
     fetch(url)
@@ -74,7 +75,7 @@ export function useApi<T>(path: string, params?: QueryParams): ApiState<T> {
     return () => {
       cancelled = true;
     };
-  }, [url, path, ready, view]);
+  }, [url, path, ready, view, skip]);
 
-  return state;
+  return skip ? { data: null, error: null, loading: false } : state;
 }

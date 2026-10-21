@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
@@ -12,9 +13,6 @@ import {
   ColumnsIcon,
   DownloadIcon,
   ListIcon,
-  MailIcon,
-  NoteIcon,
-  PhoneIcon,
   SearchIcon,
 } from './Icons';
 import { CardHeader } from './PageParts';
@@ -92,8 +90,9 @@ interface Props {
   title?: string;
 }
 
-// The job list: search and filters, one row per job (each job once, however many sites list it), with
-// the HR phone, email and notes the team fills in. Expand shows more columns; ← → scroll them.
+// The job list: search and filters, one row per job (each job once, however many sites list it).
+// Clicking a company name opens the job's details window, where the team sees and fills in the HR phone
+// numbers, emails, students and notes. Expand shows more columns; ← → scroll them.
 export default function JobsTable({ courses, meta, days, filterState, lockedCourse, title = 'Jobs' }: Props) {
   const { filters, setFilters, search, setSearch, show } = filterState;
   const [page, setPage] = useState(1);
@@ -101,10 +100,24 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
   const [expanded, setExpanded] = useState(false);
   // Rows as saved since this list loaded (HR contact typed in), shown instead of the loaded copy.
   const [savedRows, setSavedRows] = useState<Record<string, Job>>({});
+  // The job whose details window is open (its newest copy is in savedRows).
+  const [detail, setDetail] = useState<Job | null>(null);
   // Saves since the list last loaded that added (+1) or removed (-1) a job's HR details, so the
   // progress line moves at once. A reload's count already includes them, so it counts from zero again.
   const [contactChange, setContactChange] = useState<{ base: JobsResponse | null; n: number }>({ base: null, n: 0 });
   const side = useSideScroll();
+  const section = useRef<HTMLElement>(null);
+
+  // Previous / Next: show the new page from its first job. The buttons are at the bottom of the list,
+  // so without this the next page would open scrolled to its end. Only when the list's top is out of
+  // view (its scroll-margin-top keeps it clear of the sticky top bar).
+  const goToPage = (next: number) => {
+    setPage(next);
+    const box = section.current;
+    if (!box || box.getBoundingClientRect().top >= 0) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    box.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+  };
   const { view } = useDataView();
   const apiUrl = useApiUrl();
 
@@ -130,7 +143,7 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <section className="card card-flush" id="jobs">
+    <section ref={section} className="card card-flush" id="jobs">
       <CardHeader
         icon={<ListIcon />}
         title={
@@ -139,7 +152,7 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
             {data && <span className="count-badge">{formatNumber(data.total)}</span>}
           </>
         }
-        description="Each job is shown once, even when several sites list it. Click a Phone, Email or Notes cell to add the HR contact."
+        description="Each job is shown once, even when several sites list it. Click a company name to see and edit its HR contact, students and notes."
         actions={
           <>
             {data && data.total > 0 && <ContactProgress done={withContact} total={data.total} />}
@@ -155,10 +168,10 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
           <SearchIcon />
           <input
             type="search"
-            placeholder="Search job title or company"
+            placeholder="Search job, company or student"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search job title or company"
+            aria-label="Search job title, company or assigned student"
           />
         </label>
         {!lockedCourse && (
@@ -246,24 +259,6 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
                   <th scope="col">Found by us</th>
                 </>
               )}
-              <th scope="col" className="contact-col">
-                <span className="th-icon">
-                  <PhoneIcon size={13} /> Phone
-                </span>
-              </th>
-              <th scope="col" className="contact-col">
-                <span className="th-icon">
-                  <MailIcon size={13} /> Email
-                </span>
-              </th>
-              <th scope="col" className="contact-col">
-                <span className="th-icon">
-                  <NoteIcon size={13} /> Notes
-                </span>
-              </th>
-              <th scope="col" className="actions-head">
-                <span className="sr-only">Edit</span>
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -275,7 +270,7 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
                   job={job}
                   courseName={lockedCourse ? undefined : courseName[job.course]}
                   expanded={expanded}
-                  onSaved={onSaved}
+                  onOpen={setDetail}
                 />
               );
             })}
@@ -284,16 +279,27 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
         {data && data.total === 0 && <p className="empty">No jobs match these filters.</p>}
       </div>
 
+      {detail && (
+        <JobDetailsModal
+          job={savedRows[detail._id] ?? detail}
+          courses={courses}
+          saved={savedRows}
+          onClose={() => setDetail(null)}
+          onSaved={onSaved}
+          onOpenJob={(job) => setDetail(savedRows[job._id] ?? job)}
+        />
+      )}
+
       {data && data.total > 0 && (
         <div className="pager">
           <span>
             {formatNumber((data.page - 1) * data.pageSize + 1)}–{formatNumber(Math.min(data.page * data.pageSize, data.total))} of{' '}
             {formatNumber(data.total)}
           </span>
-          <button type="button" className="btn btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <button type="button" className="btn btn-sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
             Previous
           </button>
-          <button type="button" className="btn btn-sm" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}>
+          <button type="button" className="btn btn-sm" disabled={page >= data.pages} onClick={() => goToPage(page + 1)}>
             Next
           </button>
         </div>

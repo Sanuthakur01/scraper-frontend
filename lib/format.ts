@@ -126,6 +126,10 @@ export function formatPosted(value?: string | null) {
   return istDay.format(new Date(value));
 }
 
+// Every platform the job is listed on (with a link), the one it is counted under first.
+export const listingOrder = (job: Job) =>
+  [job.primaryPlatform, ...job.platforms.filter((p) => p !== job.primaryPlatform)].filter((p) => job.links[p]);
+
 export function formatExperience(job: Job) {
   if (job.experienceMin == null) return job.experienceText || 'Not stated';
   if (job.experienceMax != null) return `${job.experienceMin}–${job.experienceMax} yrs`;

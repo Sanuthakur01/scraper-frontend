@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, type Period } from '@/lib/format';
+import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, type Period } from '@/lib/format';
 import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
-import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon } from './Icons';
+import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UsersIcon } from './Icons';
+import JobDetailsModal from './JobDetailsModal';
 
 // What was clicked on the dashboard: a heading for the panel, and the job list filters behind it.
 export interface JobsView {
@@ -12,9 +13,6 @@ export interface JobsView {
 }
 
 const PAGE_SIZE = 20;
-
-// Every platform the job is listed on, the one it is counted under first.
-const listingOrder = (job: Job) => [job.primaryPlatform, ...job.platforms.filter((p) => p !== job.primaryPlatform)].filter((p) => job.links[p]);
 
 function Panel({ view, period, courses, onClose }: { view: JobsView; period: Period; courses: Course[]; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -27,6 +25,10 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
   const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: PAGE_SIZE });
   const data = jobs.data;
   const courseName = Object.fromEntries(courses.map((c) => [c.id, c.name]));
+  // Jobs whose HR details were saved in their details window since this list loaded, and the job whose
+  // details window is open (a company name was clicked).
+  const [saved, setSaved] = useState<Record<string, Job>>({});
+  const [detail, setDetail] = useState<Job | null>(null);
 
   // A modal dialog: the page behind can't be clicked or tabbed to, Esc closes it, focus starts on
   // Close, and goes back to the bar that opened it afterwards.
@@ -46,7 +48,9 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
       ref={dialog}
       className="drawer"
       aria-labelledby={titleId}
-      onClose={onClose}
+      onClose={(event) => {
+        if (event.target === event.currentTarget) onClose(); // not when the details window closes
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) close(); // the dimmed page outside the panel
       }}
@@ -72,7 +76,8 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
           {jobs.error && <p className="empty">Could not load jobs: {jobs.error.message}</p>}
           {data && data.total === 0 && <p className="empty">No jobs.</p>}
           <ul className={`drawer-list ${jobs.loading ? 'is-loading' : ''}`}>
-            {data?.items.map((job) => {
+            {data?.items.map((loaded) => {
+              const job = saved[loaded._id] ?? loaded;
               const links = listingOrder(job);
               return (
                 <li key={job._id} className="drawer-job">
@@ -93,7 +98,15 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                       {courseName[job.course]}
                     </span>
                     {' · '}
-                    {job.company || 'Company not shown'}
+                    <button
+                      type="button"
+                      className="company-link"
+                      onClick={() => setDetail(job)}
+                      aria-haspopup="dialog"
+                      title="Open: HR contact, students, notes and job details"
+                    >
+                      {job.company || 'Company not shown'}
+                    </button>
                     {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
                   </span>
                   <div className="drawer-job-meta">
@@ -111,7 +124,7 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                       ))}
                     </ul>
                   </div>
-                  {(job.contact.phone || job.contact.email) && (
+                  {(job.contact.phone || job.contact.email || job.contact.assignedTo.length > 0) && (
                     <div className="drawer-contact">
                       {job.contact.phone && (
                         <span>
@@ -121,6 +134,11 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                       {job.contact.email && (
                         <span>
                           <MailIcon size={12} /> {job.contact.email}
+                        </span>
+                      )}
+                      {job.contact.assignedTo.length > 0 && (
+                        <span title="Assigned to">
+                          <UsersIcon size={12} /> {job.contact.assignedTo.join(', ')}
                         </span>
                       )}
                     </div>
@@ -145,6 +163,16 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
           </div>
         )}
       </div>
+      {detail && (
+        <JobDetailsModal
+          job={saved[detail._id] ?? detail}
+          courses={courses}
+          saved={saved}
+          onClose={() => setDetail(null)}
+          onSaved={(job) => setSaved((rows) => ({ ...rows, [job._id]: job }))}
+          onOpenJob={(job) => setDetail(saved[job._id] ?? job)}
+        />
+      )}
     </dialog>
   );
 }

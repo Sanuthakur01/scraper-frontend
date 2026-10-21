@@ -209,6 +209,7 @@ export interface JobContact {
   email: string;
   emailSource: ContactSource;
   remarks: string;
+  assignedTo: string[]; // students this job is assigned to (typed in on the dashboard)
   updatedAt: string | null; // when the typed-in details were last saved
 }
 
@@ -218,9 +219,11 @@ export interface FollowUpInput {
   phone: string[];
   email: string[];
   remarks: string;
+  assignedTo: string[]; // one box per student
 }
 
 export const MAX_CONTACT_ENTRIES = 5; // the server's MAX_ENTRIES (api/followUp.js)
+export const MAX_STUDENTS = 20; // the server's MAX_STUDENTS
 
 export interface JobsResponse {
   days: number;
