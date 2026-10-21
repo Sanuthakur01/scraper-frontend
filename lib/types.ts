@@ -24,12 +24,15 @@ export interface Meta {
   scheduleLabel: string;
   filters: { experience: { min: number; max: number | null }; excludedCompanies: string[] }; // max null: no upper limit
   lastRun: LastRun | null;
+  dataDays: { first: string | null; last: string }; // the oldest and newest IST day with stored jobs
   demo: boolean;
 }
 
 export interface Summary {
   days: number;
   anchor: string;
+  from: string; // the period's first and last IST day (both included)
+  to: string;
   current: CourseCounts;
   previous: CourseCounts;
 }
@@ -163,21 +166,6 @@ export interface Job {
 
 export type LeftOutReason = 'big-company' | 'experience' | 'no-experience';
 
-// GET /api/report: the last 7 days, to share.
-export interface ReportResponse {
-  from: string; // "2026-10-11" (IST days)
-  to: string;
-  total: number;
-  comparable: boolean; // false: no full earlier week to compare with
-  courses: (Course & { count: number; previous: number | null; skills: string[] })[];
-  companies: NamedCount[];
-  cities: NamedCount[];
-  platforms: string[];
-  experience: { min: number; max: number | null };
-  brand: string;
-  lastRefreshed: string | null;
-}
-
 // GET /api/partners: employers with several openings in the last 90 days.
 export interface Partner {
   name: string;
@@ -240,4 +228,51 @@ export interface ApiState<T> {
   data: T | null;
   error: Error | null;
   loading: boolean;
+}
+
+// GET /api/activity: who changed which job's HR details, and what changed (server/src/activity.js).
+export type ActivityAction = 'added' | 'edited' | 'removed';
+
+export interface ActivityChange {
+  field: 'phone' | 'email' | 'assignedTo' | 'remarks';
+  change: ActivityAction;
+  before: string[]; // the values before (notes: one value)
+  after: string[];
+  added: string[]; // lists: values that are new...
+  removed: string[]; // ...and values that are gone
+}
+
+export interface ActivityEntry {
+  _id: string;
+  at: string;
+  actor: { userId: string; email: string; name?: string; role?: string | null };
+  action: ActivityAction;
+  job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
+  changes: ActivityChange[];
+}
+
+export interface ActivityResponse {
+  items: ActivityEntry[];
+  next: string | null; // pass as ?before= for the next page
+  total?: number; // first page only: records matching the filters
+  people?: { email: string; name: string; count: number }[]; // first page only: everyone who made changes
+}
+
+// GET /api/performance: one row per HR phone number or email a person added (server routes.js).
+export interface PerformanceRow {
+  record: string; // the activity record it came from
+  at: string;
+  actor: { email: string; name?: string; role?: string | null };
+  job: ActivityEntry['job'];
+  field: 'phone' | 'email';
+  value: string;
+}
+
+export interface PerformanceResponse {
+  days: number;
+  from: string; // IST days, both included
+  to: string;
+  since: string | null; // when the activity record began
+  rows: PerformanceRow[]; // newest first
+  truncated: boolean;
 }

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useApi } from '@/lib/api';
-import { formatDay, formatNumber, percent, PERIODS, periodFrom } from '@/lib/format';
+import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/lib/format';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { InsightsResponse, Meta, PlatformsResponse, Summary, TrendsResponse } from '@/lib/types';
 import { DashboardIcon, LayersIcon, TrendIcon } from './Icons';
@@ -66,18 +66,18 @@ function PlatformFacts({ data, sites, onSelect }: { data: PlatformsResponse | nu
 // The main dashboard. The data changes daily and is fetched in the browser.
 export default function Dashboard() {
   const router = useRouter();
-  const period = periodFrom(useSearchParams().get('days'));
-  const { days } = period;
+  const period = periodFrom(useSearchParams());
+  const range = periodParams(period);
   const [platformView, setPlatformView] = useState<'chart' | 'table'>('chart');
   // The side panel listing the jobs behind a clicked bar, day or name (null = closed).
   const [panel, setPanel] = useState<JobsView | null>(null);
   const showJobs: ShowJobs = (filters, title) => setPanel({ filters, title });
 
   const meta = useApi<Meta>('meta');
-  const summary = useApi<Summary>('summary', { days });
-  const platforms = useApi<PlatformsResponse>('platforms', { days });
+  const summary = useApi<Summary>('summary', range);
+  const platforms = useApi<PlatformsResponse>('platforms', range);
   const trends = useApi<TrendsResponse>('trends', { days: 30 });
-  const insights = useApi<InsightsResponse>('insights', { days });
+  const insights = useApi<InsightsResponse>('insights', range);
 
   if (meta.error) return <PageError title="Could not reach the server" error={meta.error} />;
   if (!meta.data) return <PageSkeleton />;
@@ -95,10 +95,17 @@ export default function Dashboard() {
 
       <PageHeader
         icon={<DashboardIcon size={20} />}
-        eyebrow={`India job market${anchor ? ` · ${formatDay(anchor)}` : ''}`}
+        eyebrow={`India job market${period.from ? ` · ${period.label}` : anchor ? ` · ${formatDay(anchor)}` : ''}`}
         title="Job market overview"
         subtitle={`New openings for your ${courses.length} courses, collected every day from ${meta.data.platforms.join(', ')}.`}
-        actions={<PeriodTabs periods={PERIODS} days={days} onChange={(d) => router.replace(`/?days=${d}`, { scroll: false })} />}
+        actions={
+          <PeriodTabs
+            period={period}
+            first={meta.data.dataDays?.first}
+            last={meta.data.dataDays?.last ?? anchor}
+            onChange={(query) => router.replace(`/?${query}`, { scroll: false })}
+          />
+        }
       >
         <Freshness lastRun={lastRun} scheduleLabel={scheduleLabel} />
       </PageHeader>
@@ -147,7 +154,7 @@ export default function Dashboard() {
       <PageSection title="Skills and curriculum" description="What employers ask for, and how many more jobs students could apply for if a course added a skill">
         <SkillsPanel
           courses={courses}
-          days={days}
+          period={period}
           experience={meta.data.filters.experience}
           requested={insights.data?.skills}
           loading={insights.loading}

@@ -702,18 +702,6 @@ h1 {
   font-size: 13px;
 }
 
-.toast {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--good-bg);
-  color: var(--good-text);
-  font-size: 13px;
-  font-weight: 500;
-}
-
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -864,6 +852,113 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+/* Period tabs with Custom: one chosen day or a range, in a small panel under the tabs */
+.period-picker {
+  position: relative;
+}
+
+.segmented .period-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.period-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 15; /* under the sticky top bar (20) */
+  display: grid;
+  gap: 14px;
+  width: 340px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+}
+
+.period-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.period-panel-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.period-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.period-field {
+  display: grid;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.period-field input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  box-shadow: var(--shadow-xs);
+}
+
+.period-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.period-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.period-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Phones: the four choices two by two across the page, and the panel as wide as they are */
+@media (max-width: 640px) {
+  .page-actions:has(> .period-picker),
+  .period-picker {
+    flex: 1 1 100%;
+  }
+  .period-picker .segmented {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .period-picker .segmented button {
+    justify-content: center;
+    text-align: center;
+  }
+  .period-panel {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
 }
 
 /* ---------- Course switcher (course page) ---------- */
@@ -1247,7 +1342,8 @@ a.kpi-course:hover .kpi-cta svg {
   padding: 0 22px 16px;
 }
 
-.card-flush > .empty {
+.card-flush > .empty,
+.card-flush .table-wrap > .empty {
   padding: 16px 22px;
 }
 
@@ -2773,33 +2869,239 @@ button.rank-row:disabled {
   margin-top: 8px;
 }
 
-/* ---------- Weekly report ---------- */
-
-.report-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+/* Between phone and desktop widths the four tabs' full names fit only without their icons */
+@media (min-width: 641px) and (max-width: 760px) {
+  .app-nav .nav-icon {
+    display: none;
+  }
 }
 
-.report-preview svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+/* ---------- Performance report: a drill-down table (person > course > company > job > each detail) ---------- */
+
+.perf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.whatsapp-text {
+.perf-note {
+  margin: 0 22px 12px;
+}
+
+.perf-table th[scope='row'],
+.perf-table .perf-leaf td {
   width: 100%;
-  padding: 14px 16px;
-  font: 13px/1.6 ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  color: var(--text-primary);
+}
+
+.perf-table tbody tr.perf-row:hover {
   background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  resize: vertical;
+}
+
+/* Each level is indented under the one above it (--depth: 0 for a person) */
+.perf-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-left: calc(var(--depth, 0) * 22px);
+}
+
+.perf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 2px 8px 2px 2px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.perf-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.perf-chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.perf-toggle[aria-expanded='true'] .perf-chevron {
+  transform: rotate(90deg);
+  color: var(--accent-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .perf-chevron {
+    transition: none;
+  }
+}
+
+.perf-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  flex: none;
+}
+
+.perf-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.perf-email {
+  font-size: 12.5px;
+}
+
+.perf-course,
+.perf-company,
+.perf-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  overflow-wrap: break-word; /* whole words; a long name wraps between them */
+}
+
+/* A job's badge (Non-filtered) goes under its title when there is no room beside it */
+.perf-job {
+  flex-wrap: wrap;
+}
+
+.perf-course .dot {
+  background: var(--course);
+}
+
+.perf-company svg,
+.perf-job svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.perf-row.level-person th,
+.perf-row.level-person td {
+  border-top: 1px solid var(--border);
+}
+
+.perf-row:not(.level-person) th,
+.perf-row:not(.level-person) td,
+.perf-leaf td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-bottom-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.perf-row:not(.level-person) td {
+  color: var(--text-secondary);
+}
+
+/* Opens the job's details window (next to a job's name) */
+.perf-open {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.perf-open:hover {
+  background: var(--surface-2);
+  color: var(--link);
+}
+
+.perf-problem {
+  margin-top: 4px;
+  padding-left: calc(var(--depth, 0) * 22px + 26px);
+}
+
+/* The final grain: one number or email, and when it was added */
+.perf-leaf td {
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  font-size: 13px;
+}
+
+.perf-leaf .perf-name {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-left: calc(var(--depth, 0) * 22px + 26px);
+}
+
+.perf-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 650;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.perf-kind.email {
+  background: var(--good-bg);
+  color: var(--good-text);
+}
+
+.perf-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.perf-time {
+  font-size: 12.5px;
+}
+
+.perf-footnote {
+  padding: 12px 22px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .perf-table .hide-sm {
+    display: none;
+  }
+  .perf-table th,
+  .perf-table td {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .perf-name {
+    padding-left: calc(var(--depth, 0) * 12px);
+  }
+  .perf-leaf .perf-name,
+  .perf-problem {
+    padding-left: calc(var(--depth, 0) * 12px + 20px);
+  }
+  .perf-email,
+  .perf-row .activity-role {
+    display: none;
+  }
+  .perf-table .cell-bar-track {
+    display: none;
+  }
+  .perf-note {
+    margin: 0 16px 12px;
+  }
+  .perf-footnote {
+    padding: 12px 16px;
+  }
 }
 
 /* ---------- Hiring partners ---------- */
@@ -3752,6 +4054,452 @@ html:has(.job-modal[open]) {
   }
 }
 
+/* ---------- Sign-in (Clerk) and roles ---------- */
+
+/* A full page before the dashboard: checking the sign-in, the sign-in box, or a message */
+.auth-screen {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 22px;
+  min-height: calc(100vh - 72px);
+  padding: 40px 16px;
+  flex: 1 0 auto;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Shown here even on smaller screens, where the top bar hides it */
+.auth-brand .brand-text {
+  display: grid;
+}
+
+.auth-brand .brand-name {
+  font-size: 17px;
+}
+
+.auth-checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.spinner.dark {
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+}
+
+.auth-note {
+  max-width: 400px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.auth-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(460px, 100%);
+  padding: 30px 28px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-card h1 {
+  font-size: 21px;
+}
+
+.auth-card p {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.auth-card .auth-muted {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.auth-card code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+}
+
+.auth-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* Top bar: the signed-in person's role, and their account menu (Clerk) */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.user-menu {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+@media (max-width: 640px) {
+  .role-badge {
+    display: none; /* the account menu still shows who is signed in */
+  }
+  .auth-screen {
+    padding: 28px 12px;
+  }
+}
+
+/* ---------- Activity record ---------- */
+
+/* One column the card's width: a long person's name in the filter can't widen it */
+.activity-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.activity-card .toolbar .select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.activity-days {
+  display: grid;
+}
+
+.activity-day + .activity-day {
+  border-top: 1px solid var(--border);
+}
+
+/* "Today", "Yesterday", "Sun, 19 Oct": stays at the top while its changes scroll under it */
+.activity-day-title {
+  position: sticky;
+  top: 64px;
+  z-index: 1;
+  padding: 10px 22px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 14px 22px;
+}
+
+.activity-item + .activity-item {
+  border-top: 1px solid var(--border);
+}
+
+.activity-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.activity-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.activity-who,
+.activity-what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.activity-who .muted {
+  font-size: 12.5px;
+}
+
+.activity-role {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.activity-what {
+  color: var(--text-secondary);
+}
+
+.action-pill {
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.action-pill.added,
+.change-kind.added {
+  background: var(--good-bg);
+  color: var(--good-text);
+}
+
+.action-pill.edited,
+.change-kind.edited {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.action-pill.removed,
+.change-kind.removed {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.activity-job {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline dotted color-mix(in srgb, var(--text-primary) 35%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.activity-job:hover {
+  color: var(--link);
+  text-decoration-color: var(--link);
+}
+
+.activity-changes {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.activity-changes li {
+  display: grid;
+  grid-template-columns: 112px 70px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.change-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.change-kind {
+  justify-self: start;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.change-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.value-chip {
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.value-chip.added {
+  background: var(--good-bg);
+  color: var(--good-text);
+}
+
+.value-chip.removed {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.value-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.value-text.old {
+  color: var(--text-muted);
+}
+
+.change-arrow {
+  color: var(--text-muted);
+}
+
+.activity-time {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 22px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.activity-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 16px 22px;
+}
+
+.activity-skeleton .skeleton {
+  height: 72px;
+  border-radius: 10px;
+}
+
+.activity-notice {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: 13px;
+}
+
+/* Test sign-in (development only, lib/session.ts) */
+.test-sign-in-note {
+  padding: 6px 16px;
+  background: var(--warn-bg);
+  border-bottom: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.test-user {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .activity-item {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 12px 16px;
+  }
+  .activity-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  /* The time sits at the right of the name line (both in column 2, row 1) */
+  .activity-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .activity-time {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .activity-who {
+    padding-right: 64px; /* room for the time */
+  }
+  .activity-changes li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .change-values {
+    grid-column: 1 / -1;
+  }
+  /* Not pinned on phones: the header's height there depends on how its tabs wrap (about 97-183px) */
+  .activity-day-title {
+    position: static;
+    padding: 8px 16px;
+  }
+}
+
 /* ---------- Smaller screens ---------- */
 
 @media (max-width: 1100px) {
@@ -3773,7 +4521,6 @@ html:has(.job-modal[open]) {
 @media (max-width: 900px) {
   .grid-2,
   .grid-3,
-  .report-layout,
   .skills-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3865,7 +4612,7 @@ html:has(.job-modal[open]) {
   .kpi-total .kpi-value {
     font-size: 32px;
   }
-  .card {
+  .card:not(.card-flush) {
     padding: 16px;
   }
   .card-flush > .card-header {
@@ -3873,6 +4620,10 @@ html:has(.job-modal[open]) {
   }
   .card-flush > .toolbar {
     padding: 0 16px 12px;
+  }
+  .card-flush > .empty,
+  .card-flush .table-wrap > .empty {
+    padding: 16px;
   }
   .pager {
     padding: 12px 16px;

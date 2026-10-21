@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError, sendJson, useApi } from '@/lib/api';
+import { useAccess } from './AuthGate';
 import {
   COURSE_COLORS,
   formatDate,
@@ -101,8 +102,10 @@ function CopyButton({ value, what }: { value: string; what: string }) {
   );
 }
 
-// An empty field in the view: a dashed button that opens the form at that field.
-function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+// An empty field in the view: a dashed button that opens the form at that field ("None yet" for a role
+// that may not edit).
+function AddButton({ children, onClick, allowed }: { children: ReactNode; onClick: () => void; allowed: boolean }) {
+  if (!allowed) return <span className="muted">None yet</span>;
   return (
     <button type="button" className="add-field" onClick={onClick}>
       <PlusIcon size={13} /> {children}
@@ -276,6 +279,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   const [focusOn, setFocusOn] = useState<string | null>(null); // the box (data-entry) to put the cursor in next
 
   const { contact } = job;
+  const mayEdit = useAccess()?.can('edit-hr-details') ?? false; // the signed-in person's role (lib/access.ts)
   const editing = draft !== null;
   const original = useMemo(() => draftFrom(contact), [contact]);
   const changed = draft !== null && !sameDraft(draft, original);
@@ -318,7 +322,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
 
   // field: where to put the cursor. addAnother: a list that already has values gets an empty box for one more.
   const startEditing = (field: FieldKey = 'phone', addAnother = false) => {
-    if (editing) return;
+    if (editing || !mayEdit) return;
     const next = draftFrom(contact);
     if (field !== 'remarks' && addAnother && next[field].some(Boolean) && next[field].length < LISTS[field].max) next[field].push('');
     setDraft(next);
@@ -534,14 +538,14 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                             ))}
                           </ul>
                           {contact.phoneSource === 'posting' && <span className="contact-source">From the job post</span>}
-                          {phones.length < LISTS.phone.max && (
+                          {mayEdit && phones.length < LISTS.phone.max && (
                             <button type="button" className="btn-link add-another" onClick={() => startEditing('phone', true)}>
                               Add another number
                             </button>
                           )}
                         </>
                       ) : (
-                        <AddButton onClick={() => startEditing('phone')}>Add phone number</AddButton>
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('phone')}>Add phone number</AddButton>
                       )}
                     </dd>
                   </div>
@@ -561,14 +565,14 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                             ))}
                           </ul>
                           {contact.emailSource === 'posting' && <span className="contact-source">From the job post</span>}
-                          {emails.length < LISTS.email.max && (
+                          {mayEdit && emails.length < LISTS.email.max && (
                             <button type="button" className="btn-link add-another" onClick={() => startEditing('email', true)}>
                               Add another email
                             </button>
                           )}
                         </>
                       ) : (
-                        <AddButton onClick={() => startEditing('email')}>Add email</AddButton>
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('email')}>Add email</AddButton>
                       )}
                     </dd>
                   </div>
@@ -586,14 +590,14 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                               </li>
                             ))}
                           </ul>
-                          {contact.assignedTo.length < LISTS.assignedTo.max && (
+                          {mayEdit && contact.assignedTo.length < LISTS.assignedTo.max && (
                             <button type="button" className="btn-link add-another" onClick={() => startEditing('assignedTo', true)}>
                               Add another student
                             </button>
                           )}
                         </>
                       ) : (
-                        <AddButton onClick={() => startEditing('assignedTo')}>Assign students</AddButton>
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('assignedTo')}>Assign students</AddButton>
                       )}
                     </dd>
                   </div>
@@ -605,12 +609,14 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                       {contact.remarks ? (
                         <>
                           <p className="notes-text">{contact.remarks}</p>
-                          <button type="button" className="btn-link add-another" onClick={() => startEditing('remarks')}>
-                            Edit note
-                          </button>
+                          {mayEdit && (
+                            <button type="button" className="btn-link add-another" onClick={() => startEditing('remarks')}>
+                              Edit note
+                            </button>
+                          )}
                         </>
                       ) : (
-                        <AddButton onClick={() => startEditing('remarks')}>Add a note</AddButton>
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('remarks')}>Add a note</AddButton>
                       )}
                     </dd>
                   </div>
@@ -678,14 +684,19 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
             </>
           ) : (
             <>
-              <span className="footer-note">{contact.updatedAt ? `Last updated ${formatUpdated(contact.updatedAt)}` : 'Nothing typed in yet'}</span>
+              <span className="footer-note">
+                {contact.updatedAt ? `Last updated ${formatUpdated(contact.updatedAt)}` : 'Nothing typed in yet'}
+                {!mayEdit && ' · View only for your role'}
+              </span>
               <div className="footer-actions">
                 <button type="button" className="btn" onClick={close}>
                   Close
                 </button>
-                <button type="button" className="btn btn-primary" data-entry="edit" onClick={() => startEditing()}>
-                  <PencilIcon size={15} /> Edit details
-                </button>
+                {mayEdit && (
+                  <button type="button" className="btn btn-primary" data-entry="edit" onClick={() => startEditing()}>
+                    <PencilIcon size={15} /> Edit details
+                  </button>
+                )}
               </div>
             </>
           )}

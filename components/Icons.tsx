@@ -139,16 +139,6 @@ export const DashboardIcon = (p: P) => (
   </Icon>
 );
 
-export const ReportIcon = (p: P) => (
-  <Icon {...p}>
-    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    <path d="M16 13H8" />
-    <path d="M16 17H8" />
-    <path d="M10 9H8" />
-  </Icon>
-);
-
 export const BuildingIcon = (p: P) => (
   <Icon {...p}>
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
@@ -292,5 +282,38 @@ export const TargetIcon = (p: P) => (
     <circle cx="12" cy="12" r="10" />
     <circle cx="12" cy="12" r="6" />
     <circle cx="12" cy="12" r="2" />
+  </Icon>
+);
+
+export const LockIcon = (p: P) => (
+  <Icon {...p}>
+    <rect width="18" height="11" x="3" y="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </Icon>
+);
+
+export const HistoryIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M12 7v5l4 2" />
+  </Icon>
+);
+
+export const CalendarIcon = (p: P) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4" />
+    <path d="M8 2v4" />
+    <path d="M3 10h18" />
+  </Icon>
+);
+
+export const ChartIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 3v18h18" />
+    <path d="M7 16v-4" />
+    <path d="M12 16V8" />
+    <path d="M17 16v-7" />
   </Icon>
 );

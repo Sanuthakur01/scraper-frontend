@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import AppHeader from '@/components/AppHeader';
+import AuthGate from '@/components/AuthGate';
 import { NonFilteredNote } from '@/components/DataViewToggle';
 import { DataViewProvider } from '@/lib/dataView';
 import './globals.css';
@@ -24,11 +25,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <DataViewProvider>
-          <AppHeader />
-          <NonFilteredNote />
-          {children}
-        </DataViewProvider>
+        {/* Sign-in first: nothing below (or its data) loads until the person has an allowed role. */}
+        <AuthGate>
+          <DataViewProvider>
+            <AppHeader />
+            <NonFilteredNote />
+            {children}
+          </DataViewProvider>
+        </AuthGate>
         <footer className="app-footer">
           <div className="app-footer-inner">
             <span className="app-footer-brand">IJF Job Tracker</span>

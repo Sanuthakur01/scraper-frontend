@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, sumCounts, type Period } from '@/lib/format';
+import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, periodQuery, sumCounts, type Period } from '@/lib/format';
 import type { ApiState, Course, Summary } from '@/lib/types';
 import { ArrowRightIcon, TrendIcon } from './Icons';
 
@@ -55,7 +55,7 @@ export default function StatTiles({ courses, state, period }: Props) {
           <Link
             className="kpi kpi-course"
             key={course.id}
-            href={`/course/${course.id}?days=${period.days}`}
+            href={`/course/${course.id}?${periodQuery(period)}`}
             style={{ '--course': COURSE_COLORS[course.id] } as CSSProperties}
             aria-label={`${course.name}: ${formatNumber(count)} new jobs, ${percent(count, total)} of all. Open the course page`}
           >

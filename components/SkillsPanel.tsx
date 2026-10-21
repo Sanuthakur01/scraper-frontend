@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
-import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, type ExperienceRange } from '@/lib/format';
+import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, periodParams, type ExperienceRange, type Period } from '@/lib/format';
 import { useDataView } from '@/lib/dataView';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
@@ -24,7 +24,7 @@ const growth = (extra: number, now: number) => (now ? `+${Math.round((extra / no
 
 interface Props {
   courses: Course[];
-  days: number;
+  period: Period;
   experience: ExperienceRange;
   requested?: InsightsResponse['skills']; // most-requested skills per course, from /api/insights
   loading?: boolean;
@@ -34,11 +34,11 @@ interface Props {
 // "Skills employers ask for": for one course, the skills its job posts ask for most, and a planner:
 // which skills to add, one after another, would let students match how many more job posts, and which
 // jobs those are (server/src/skillGaps.js).
-export default function SkillsPanel({ courses, days, experience, requested, loading, onSelect }: Props) {
+export default function SkillsPanel({ courses, period, experience, requested, loading, onSelect }: Props) {
   const [courseId, setCourseId] = useState<CourseId>(courses[0].id);
   const [picked, setPicked] = useState<string[] | null>(null); // null = the ladder's first step
   const [showAllJobs, setShowAllJobs] = useState(false);
-  const gaps = useApi<SkillGapsResponse>('skill-gaps', { course: courseId, days });
+  const gaps = useApi<SkillGapsResponse>('skill-gaps', { course: courseId, ...periodParams(period) });
   const { view } = useDataView();
   const data = gaps.data;
   const color = COURSE_COLORS[courseId];

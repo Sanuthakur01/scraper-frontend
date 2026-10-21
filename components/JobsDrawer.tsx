@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, type Period } from '@/lib/format';
+import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, type Period } from '@/lib/format';
 import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
 import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UsersIcon } from './Icons';
@@ -21,7 +21,7 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
   const titleId = useId();
   const [page, setPage] = useState(1);
   const apiUrl = useApiUrl();
-  const params = { ...view.filters, days: period.days };
+  const params = { ...view.filters, ...periodParams(period) };
   const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: PAGE_SIZE });
   const data = jobs.data;
   const courseName = Object.fromEntries(courses.map((c) => [c.id, c.name]));
@@ -58,7 +58,7 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
       <div className="drawer-panel">
         <header className="drawer-header">
           <div className="drawer-heading">
-            <p className="eyebrow">{view.filters.day ? 'One day' : period.tab}</p>
+            <p className="eyebrow">{view.filters.day ? 'One day' : period.label}</p>
             <h2 id={titleId}>{view.title}</h2>
             <p className="drawer-count">{data ? `${formatNumber(data.total)} ${data.total === 1 ? 'job' : 'jobs'}` : 'Loading…'}</p>
           </div>

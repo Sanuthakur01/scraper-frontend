@@ -3,7 +3,7 @@ import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { experienceBands, formatNumber } from '@/lib/format';
+import { experienceBands, formatNumber, periodParams, periodQuery, type Period } from '@/lib/format';
 import { filterChips, type JobFilters, type JobFilterState } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse, Meta } from '@/lib/types';
 import {
@@ -84,7 +84,7 @@ function useSideScroll() {
 interface Props {
   courses: Course[];
   meta: Meta;
-  days: number;
+  period: Period;
   filterState: JobFilterState; // from useJobFilters() in the page
   lockedCourse?: Course['id']; // on a course page: only that course, no course filter
   title?: string;
@@ -93,7 +93,7 @@ interface Props {
 // The job list: search and filters, one row per job (each job once, however many sites list it).
 // Clicking a company name opens the job's details window, where the team sees and fills in the HR phone
 // numbers, emails, students and notes. Expand shows more columns; ← → scroll them.
-export default function JobsTable({ courses, meta, days, filterState, lockedCourse, title = 'Jobs' }: Props) {
+export default function JobsTable({ courses, meta, period, filterState, lockedCourse, title = 'Jobs' }: Props) {
   const { filters, setFilters, search, setSearch, show } = filterState;
   const [page, setPage] = useState(1);
   // Expand: also show salary, skills, work mode and when we found each job.
@@ -121,11 +121,12 @@ export default function JobsTable({ courses, meta, days, filterState, lockedCour
   const { view } = useDataView();
   const apiUrl = useApiUrl();
 
+  const periodKey = periodQuery(period);
   useEffect(() => {
     setPage(1);
-  }, [filters, days]);
+  }, [filters, periodKey]);
 
-  const params = { ...filters, ...(lockedCourse ? { course: lockedCourse } : {}), days };
+  const params = { ...filters, ...(lockedCourse ? { course: lockedCourse } : {}), ...periodParams(period) };
   const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: 25 });
   const data = jobs.data;
   const courseName = Object.fromEntries(courses.map((c) => [c.id, c.name]));

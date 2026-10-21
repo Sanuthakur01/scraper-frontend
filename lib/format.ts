@@ -45,20 +45,73 @@ export function experienceBands({ min, max }: ExperienceRange, view: DataView = 
 export const experienceRangeText = ({ min, max }: ExperienceRange) => (max == null ? `${min}+` : `${min}–${max}`);
 
 export interface Period {
-  days: number;
-  tab: string;
-  title: string;
-  previous: string;
+  key: string; // '1', '7', '30', or 'custom'
+  days: number; // how many days it covers
+  tab: string; // its name on the period tabs
+  label: string; // its short name elsewhere ("Last 7 days", "12–15 Oct")
+  title: string; // under the big numbers
+  previous: string; // what it is compared with ("vs previous 7 days")
+  from?: string; // a custom period: its first and last IST day ("2026-10-12"), both included
+  to?: string;
 }
 
 export const PERIODS: Period[] = [
-  { days: 1, tab: 'Latest day', title: 'New jobs found today', previous: 'previous day' },
-  { days: 7, tab: 'Last 7 days', title: 'New jobs in the last 7 days', previous: 'previous 7 days' },
-  { days: 30, tab: 'Last 30 days', title: 'New jobs in the last 30 days', previous: 'previous 30 days' },
+  { key: '1', days: 1, tab: 'Latest day', label: 'Latest day', title: 'New jobs found today', previous: 'previous day' },
+  { key: '7', days: 7, tab: 'Last 7 days', label: 'Last 7 days', title: 'New jobs in the last 7 days', previous: 'previous 7 days' },
+  { key: '30', days: 30, tab: 'Last 30 days', label: 'Last 30 days', title: 'New jobs in the last 30 days', previous: 'previous 30 days' },
 ];
 
-// The period from the page address (?days=7), so it stays the same when moving between pages.
-export const periodFrom = (days: string | null) => PERIODS.find((p) => String(p.days) === days) ?? PERIODS[0];
+export const MAX_CUSTOM_DAYS = 366; // the server's MAX_RANGE_DAYS
+
+// "2026-10-12": a real calendar day written that way (not "2026-02-31").
+export const isDay = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().startsWith(value);
+
+// Days from `from` to `to`, both included ("2026-10-12", "2026-10-15" -> 4).
+export const dayCount = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+
+// "2026-10-12" moved by n days.
+export const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+// "15 Oct", "12–15 Oct", "28 Sep – 3 Oct", "28 Dec 2025 – 3 Jan 2026"
+export function rangeLabel(from: string, to: string) {
+  if (from === to) return formatDay(from);
+  const [fy, fm] = from.split('-');
+  const [ty, tm] = to.split('-');
+  if (fy !== ty) return `${formatDate(`${from}T12:00:00+05:30`)} – ${formatDate(`${to}T12:00:00+05:30`)}`;
+  if (fm !== tm) return `${formatDay(from)} – ${formatDay(to)}`;
+  return `${Number(from.slice(8))}–${formatDay(to)}`;
+}
+
+// A period of the days chosen (in either order).
+export function customPeriod(a: string, b: string): Period {
+  const [from, to] = a <= b ? [a, b] : [b, a];
+  const days = dayCount(from, to);
+  const label = rangeLabel(from, to);
+  return {
+    key: 'custom',
+    days,
+    from,
+    to,
+    tab: label,
+    label,
+    title: days === 1 ? `New jobs found on ${label}` : `New jobs found ${label}`,
+    previous: days === 1 ? 'the day before' : `the ${days} days before`,
+  };
+}
+
+// The period from the page address, so it stays the same when moving between pages: ?days=7, or
+// ?from=2026-10-12&to=2026-10-15 for chosen dates. Anything else: the first of the presets.
+export function periodFrom(params: { get(name: string): string | null }, presets: Period[] = PERIODS): Period {
+  const from = params.get('from');
+  const to = params.get('to') ?? from;
+  if (isDay(from) && isDay(to)) return customPeriod(from, to);
+  return presets.find((p) => String(p.days) === params.get('days')) ?? presets[0];
+}
+
+// The period for the API (?days= or ?from=&to=) and for page addresses.
+export const periodParams = (p: Period) => (p.from ? { from: p.from, to: p.to } : { days: p.days });
+export const periodQuery = (p: Period) => (p.from ? `from=${p.from}&to=${p.to}` : `days=${p.days}`);
 
 // Why a Non-filtered job is left out, in words (server: leftOutReason in config/filters.js).
 export const LEFT_OUT_LABELS: Record<LeftOutReason, string> = {
@@ -99,6 +152,17 @@ const istTime = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hou
 const istDayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }); // 2026-10-19
 
 // "today, 4:28 pm" / "yesterday, 9:05 am" / "17 Oct, 12:48 pm" (IST).
+// For the activity record: the IST day a time falls on ("2026-10-21", to group by), its heading
+// ("Today", "Yesterday", "Sun, 19 Oct") and the time of day ("4:28 pm").
+const istWeekday = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short' });
+export const istDayOf = (value: string) => istDayKey.format(new Date(value));
+export function dayHeading(day: string) {
+  if (day === istDayKey.format(new Date())) return 'Today';
+  if (day === istDayKey.format(new Date(Date.now() - 86_400_000))) return 'Yesterday';
+  return istWeekday.format(new Date(`${day}T12:00:00+05:30`));
+}
+export const formatTime = (value: string) => istTime.format(new Date(value)).toLowerCase();
+
 export function formatUpdated(value?: string | null) {
   if (!value) return 'not yet';
   const date = new Date(value);

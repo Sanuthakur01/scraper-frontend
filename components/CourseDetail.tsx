@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { CSSProperties, ReactNode } from 'react';
 import { useApi } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, percent, PERIODS, periodFrom } from '@/lib/format';
+import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, percent, periodFrom, periodParams, periodQuery } from '@/lib/format';
 import { POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
 import type { CourseDetailResponse, CourseId, Meta, PostingAgeBucket, TrendsResponse } from '@/lib/types';
 import {
@@ -90,13 +90,13 @@ function CardButton({
 // (that's what people open a course for), then where the jobs come from and what they ask for.
 export default function CourseDetail({ courseId }: { courseId: CourseId }) {
   const router = useRouter();
-  const period = periodFrom(useSearchParams().get('days'));
-  const { days } = period;
+  const period = periodFrom(useSearchParams());
+  const query = periodQuery(period);
   const jobFilters = useJobFilters();
   const { view } = useDataView();
 
   const meta = useApi<Meta>('meta');
-  const detail = useApi<CourseDetailResponse>(`course/${courseId}`, { days });
+  const detail = useApi<CourseDetailResponse>(`course/${courseId}`, periodParams(period));
   const trends = useApi<TrendsResponse>('trends', { days: 30 });
 
   if (meta.error || detail.error) return <PageError title="Could not load this course" error={meta.error ?? detail.error} />;
@@ -121,14 +121,21 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
     <main className="page course-page" style={{ '--course': color } as CSSProperties}>
       <PageHeader
         eyebrow={
-          <Link className="back-link" href={`/?days=${days}`}>
+          <Link className="back-link" href={`/?${query}`}>
             <ChevronLeftIcon size={14} /> Dashboard
           </Link>
         }
         icon={courseInitials(course.name)}
         title={course.name}
-        subtitle={`New openings for this course on ${meta.data.platforms.join(', ')} · ${formatDay(d.anchor)}`}
-        actions={<PeriodTabs periods={PERIODS} days={days} onChange={(n) => router.replace(`/course/${courseId}?days=${n}`, { scroll: false })} />}
+        subtitle={`New openings for this course on ${meta.data.platforms.join(', ')} · ${period.from ? period.label : formatDay(d.anchor)}`}
+        actions={
+          <PeriodTabs
+            period={period}
+            first={meta.data.dataDays?.first}
+            last={meta.data.dataDays?.last ?? d.anchor}
+            onChange={(next) => router.replace(`/course/${courseId}?${next}`, { scroll: false })}
+          />
+        }
       >
         <Freshness lastRun={meta.data.lastRun} scheduleLabel={meta.data.scheduleLabel} />
       </PageHeader>
@@ -137,7 +144,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
         {meta.data.courses.map((c) => (
           <Link
             key={c.id}
-            href={`/course/${c.id}?days=${days}`}
+            href={`/course/${c.id}?${query}`}
             aria-current={c.id === courseId ? 'page' : undefined}
             style={{ '--course': COURSE_COLORS[c.id] } as CSSProperties}
           >
@@ -194,7 +201,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
       <JobsTable
         courses={meta.data.courses}
         meta={meta.data}
-        days={days}
+        period={period}
         filterState={jobFilters}
         lockedCourse={courseId}
         title={`${course.name} jobs`}
