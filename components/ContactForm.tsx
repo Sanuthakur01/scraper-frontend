@@ -1,27 +1,49 @@
 import { useId } from 'react';
 import { MAX_CONTACT_ENTRIES, MAX_STUDENTS, type FollowUpInput, type JobContact } from '@/lib/types';
-import { CloseIcon, MailIcon, NoteIcon, PhoneIcon, PlusIcon, UsersIcon } from './Icons';
+import { CloseIcon, LinkIcon, MailIcon, NoteIcon, PhoneIcon, PlusIcon, UserIcon, UsersIcon } from './Icons';
 
-// The HR details the team types in for a job (phone numbers, emails, the students it is assigned to and
-// notes), as edited in the job's details window. The server checks everything again
+// The HR details the team types in for a job (the HR people's names and profile links, phone numbers,
+// emails, the students it is assigned to and notes), as edited in the job's details window. The server checks everything again
 // (server/src/api/followUp.js); the checks here follow its rules, so a mistake is shown next to the
 // right box straight away.
 
-export type ListKey = 'phone' | 'email' | 'assignedTo';
+export type ListKey = 'hrName' | 'hrProfile' | 'phone' | 'email' | 'assignedTo';
 export type FieldKey = ListKey | 'remarks';
-export const FIELD_ORDER: FieldKey[] = ['phone', 'email', 'assignedTo', 'remarks'];
+export const LIST_ORDER: ListKey[] = ['hrName', 'hrProfile', 'phone', 'email', 'assignedTo'];
+export const FIELD_ORDER: FieldKey[] = [...LIST_ORDER, 'remarks'];
 
 export const PHONE_EXISTS = 'This number already exists.'; // the server's PHONE_EXISTS
 export const REMARKS_LIMIT = 1000;
 const NAME_LIMIT = 60;
 const EMAIL_LIMIT = 120;
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}$/i;
+const HR_NAME_LIMIT = 80;
+const PROFILE_LIMIT = 300;
+
+// "linkedin.com/in/riya" -> "https://linkedin.com/in/riya". A web address (http or https, with a
+// domain), or null: never another kind of link (the server's profileUrl).
+export function profileUrl(text: string): string | null {
+  const value = /^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.') || url.username || url.password) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+const profileKey = (url: string) => url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '');
+
+// A profile link as shown: "linkedin.com/in/riya-sharma" (no "https://www." or trailing slash).
+export const profileLabel = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/+$/, '');
 
 // How each list of boxes is labelled, and how many boxes it may have.
 export const LISTS: Record<
   ListKey,
-  { label: string; name: string; first: string; other: string; add: string; max: number; type: 'tel' | 'text'; mode: 'tel' | 'email' | 'text' }
+  { label: string; name: string; first: string; other: string; add: string; max: number; type: 'tel' | 'text'; mode: 'tel' | 'email' | 'text' | 'url' }
 > = {
+  hrName: { label: 'HR names', name: 'HR name', first: 'e.g. Riya Sharma', other: 'Another HR person', add: 'Add another HR name', max: MAX_CONTACT_ENTRIES, type: 'text', mode: 'text' },
+  hrProfile: { label: 'HR profile links', name: 'HR profile link', first: 'linkedin.com/in/…', other: 'Another profile link', add: 'Add another profile link', max: MAX_CONTACT_ENTRIES, type: 'text', mode: 'url' },
   phone: { label: 'Phone numbers', name: 'Phone number', first: '98765 43210', other: 'Another number', add: 'Add another number', max: MAX_CONTACT_ENTRIES, type: 'tel', mode: 'tel' },
   email: { label: 'Email addresses', name: 'Email ID', first: 'hr@company.com', other: 'Another email', add: 'Add another email', max: MAX_CONTACT_ENTRIES, type: 'text', mode: 'email' },
   assignedTo: { label: 'Assigned to', name: 'Student', first: 'Student name', other: 'Another student', add: 'Add another student', max: MAX_STUDENTS, type: 'text', mode: 'text' },
@@ -34,6 +56,8 @@ const boxesFor = (values: string[]) => (values.length ? [...values] : ['']);
 
 // A job's saved details as editable boxes: one per value, or one empty box.
 export const draftFrom = (contact: JobContact): FollowUpInput => ({
+  hrName: boxesFor(contact.hrNames ?? []),
+  hrProfile: boxesFor(contact.hrProfiles ?? []),
   phone: boxesFor(splitList(contact.phone)),
   email: boxesFor(splitList(contact.email)),
   assignedTo: boxesFor(contact.assignedTo),
@@ -46,6 +70,8 @@ const cleanRemarks = (value: string) => value.replace(/\r\n?/g, '\n').trim();
 // Whether two drafts would save the same thing (empty boxes and extra spaces don't count).
 const normalized = (draft: FollowUpInput) =>
   JSON.stringify({
+    hrName: draft.hrName.map(clean).filter(Boolean),
+    hrProfile: draft.hrProfile.map(clean).filter(Boolean),
     phone: draft.phone.map(clean).filter(Boolean),
     email: draft.email.map(clean).filter(Boolean),
     assignedTo: draft.assignedTo.map(clean).filter(Boolean),
@@ -68,6 +94,33 @@ const unique = (values: string[], key: (v: string) => string) => new Set(values.
 export function validateDraft(draft: FollowUpInput): FieldErrors {
   const errors: FieldErrors = {};
   const digits = (p: string) => p.replace(/\D/g, '').length;
+
+  const hrNames: string[] = [];
+  draft.hrName.forEach((box, index) => {
+    for (const name of box.split(/[,;\n]/).map(clean).filter(Boolean)) {
+      if (!errors.hrName && name.length > HR_NAME_LIMIT) {
+        errors.hrName = { message: `${quote(name)} is too long for a name (at most ${HR_NAME_LIMIT} characters).`, index };
+      }
+      hrNames.push(name);
+    }
+  });
+  if (!errors.hrName && unique(hrNames, (n) => n.toLowerCase()) > MAX_CONTACT_ENTRIES) {
+    errors.hrName = { message: `At most ${MAX_CONTACT_ENTRIES} names per job.` };
+  }
+
+  const links: string[] = [];
+  draft.hrProfile.forEach((box, index) => {
+    for (const part of box.split(/[\s,;]+/).filter(Boolean)) {
+      const url = part.length <= PROFILE_LIMIT ? profileUrl(part) : null;
+      if (!errors.hrProfile && !url) {
+        errors.hrProfile = { message: `${quote(part)} is not a web link. Enter it like linkedin.com/in/name.`, index };
+      }
+      if (url) links.push(url);
+    }
+  });
+  if (!errors.hrProfile && unique(links, profileKey) > MAX_CONTACT_ENTRIES) {
+    errors.hrProfile = { message: `At most ${MAX_CONTACT_ENTRIES} links per job.` };
+  }
 
   const phones: string[] = [];
   draft.phone.forEach((box, index) => {
@@ -132,6 +185,8 @@ export function errorFromServer(message: string, detail: string, draft: FollowUp
   }
   const quoted = message.match(/"([^"]+)"/)?.[1];
   const prefixes: [string, FieldKey][] = [
+    ['HR name:', 'hrName'],
+    ['HR profile:', 'hrProfile'],
     ['Phone:', 'phone'],
     ['Email:', 'email'],
     ['Assign to:', 'assignedTo'],
@@ -145,7 +200,7 @@ export function errorFromServer(message: string, detail: string, draft: FollowUp
   return {};
 }
 
-// The boxes for a job's phone numbers, emails or assigned students: one per value, × to remove one,
+// The boxes for a job's HR names, profile links, phone numbers, emails or assigned students: one per value, × to remove one,
 // and "+ Add another" below (up to the list's max). A problem shows under the boxes and marks its box.
 export function EntryList({
   kind,
@@ -214,9 +269,11 @@ export function EntryList({
   );
 }
 
-// What a job's HR details hold, in numbers: "2 phone numbers, 1 email, 3 students, a note".
+// What a job's HR details hold, in numbers: "1 HR name, 2 phone numbers, 1 email, 3 students, a note".
 export function contactSummary(contact: JobContact) {
   const counts = {
+    hrNames: contact.hrNames?.length ?? 0,
+    profiles: contact.hrProfiles?.length ?? 0,
     phones: splitList(contact.phone).length,
     emails: splitList(contact.email).length,
     students: contact.assignedTo.length,
@@ -224,6 +281,8 @@ export function contactSummary(contact: JobContact) {
   };
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   const parts = [
+    counts.hrNames && plural(counts.hrNames, 'HR name', 'HR names'),
+    counts.profiles && plural(counts.profiles, 'profile link', 'profile links'),
     counts.phones && plural(counts.phones, 'phone number', 'phone numbers'),
     counts.emails && plural(counts.emails, 'email', 'emails'),
     counts.students && plural(counts.students, 'student', 'students'),
@@ -238,6 +297,16 @@ export function ContactIcons({ contact }: { contact: JobContact }) {
   if (!c.any) return null;
   return (
     <span className="contact-icons" title={c.text}>
+      {c.hrNames > 0 && (
+        <span>
+          <UserIcon size={12} /> {c.hrNames}
+        </span>
+      )}
+      {c.profiles > 0 && (
+        <span>
+          <LinkIcon size={12} /> {c.profiles}
+        </span>
+      )}
       {c.phones > 0 && (
         <span>
           <PhoneIcon size={12} /> {c.phones}

@@ -18,7 +18,7 @@ import {
 import { CardHeader } from './PageParts';
 
 // The same test as the server's count (GET /api/jobs withContact): a phone, email or note.
-const hasContact = ({ contact }: Job) => Boolean(contact.phone || contact.email || contact.remarks);
+const hasContact = ({ contact }: Job) => Boolean(contact.hrNames?.length || contact.hrProfiles?.length || contact.phone || contact.email || contact.remarks);
 
 // A dropdown's choices, plus the current value when a chart set one that isn't among them.
 const withValue = (options: string[], value: string) => (value && !options.includes(value) ? [...options, value] : options);
@@ -169,10 +169,10 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
           <SearchIcon />
           <input
             type="search"
-            placeholder="Search job, company or student"
+            placeholder="Search job, company, HR or student"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search job title, company or assigned student"
+            aria-label="Search job title, company, HR name or assigned student"
           />
         </label>
         {!lockedCourse && (

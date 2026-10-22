@@ -192,6 +192,8 @@ export interface PartnersResponse {
 export type ContactSource = 'manual' | 'posting' | null;
 
 export interface JobContact {
+  hrNames?: string[]; // the HR people's names (typed in; missing from a server older than this dashboard)
+  hrProfiles?: string[]; // links to their profiles, e.g. LinkedIn (always http/https)
   phone: string;
   phoneSource: ContactSource;
   email: string;
@@ -204,13 +206,15 @@ export interface JobContact {
 // What PUT /api/jobs/:id/follow-up accepts: one box per phone number and per email (up to
 // MAX_CONTACT_ENTRIES each; empty boxes are ignored). Nothing entered clears a field.
 export interface FollowUpInput {
+  hrName: string[]; // one box per HR person
+  hrProfile: string[]; // one box per profile link
   phone: string[];
   email: string[];
   remarks: string;
   assignedTo: string[]; // one box per student
 }
 
-export const MAX_CONTACT_ENTRIES = 5; // the server's MAX_ENTRIES (api/followUp.js)
+export const MAX_CONTACT_ENTRIES = 10; // the server's MAX_ENTRIES (api/followUp.js): numbers, emails, HR names, profile links
 export const MAX_STUDENTS = 20; // the server's MAX_STUDENTS
 
 export interface JobsResponse {
@@ -234,12 +238,14 @@ export interface ApiState<T> {
 export type ActivityAction = 'added' | 'edited' | 'removed';
 
 export interface ActivityChange {
-  field: 'phone' | 'email' | 'assignedTo' | 'remarks';
+  // contactStudent / contactRemark: the performance report's follow-up of one number or email (contact)
+  field: 'hrName' | 'hrProfile' | 'phone' | 'email' | 'assignedTo' | 'remarks' | 'contactStudent' | 'contactRemark';
   change: ActivityAction;
   before: string[]; // the values before (notes: one value)
   after: string[];
   added: string[]; // lists: values that are new...
   removed: string[]; // ...and values that are gone
+  contact?: { field: 'phone' | 'email'; value: string }; // which number or email (contactStudent / contactRemark)
 }
 
 export interface ActivityEntry {
@@ -266,6 +272,18 @@ export interface PerformanceRow {
   job: ActivityEntry['job'];
   field: 'phone' | 'email';
   value: string;
+  key: string; // what the number/email is matched by (bare digits / lower case): rows of the same one share it
+  outcome: ContactOutcome | null; // its follow-up, if any
+}
+
+// The follow-up of one number or email (PUT /api/outcomes): the student it was given to, and how it went.
+export type RemarkStatus = 'dnp' | 'wrong' | 'not-person' | 'cv-shared' | 'no-openings' | 'other';
+export interface ContactOutcome {
+  student: string; // '' = not given to anyone yet
+  status: RemarkStatus | '';
+  note: string; // the words of an "Others" remark
+  updatedAt: string | null;
+  updatedBy: { email: string; name?: string } | null;
 }
 
 export interface PerformanceResponse {
@@ -275,4 +293,5 @@ export interface PerformanceResponse {
   since: string | null; // when the activity record began
   rows: PerformanceRow[]; // newest first
   truncated: boolean;
+  students: string[]; // every student name used so far, to suggest
 }

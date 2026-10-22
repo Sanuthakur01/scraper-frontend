@@ -1,16 +1,18 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Fragment, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { apiUrl, useApi } from '@/lib/api';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ApiError, apiUrl, sendJson, useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, percent, periodFrom, periodParams, type Period } from '@/lib/format';
-import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, performanceCsv, type PerfNode } from '@/lib/performance';
+import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
 import { signInHeader } from '@/lib/session';
-import type { Job, JobsResponse, Meta, PerformanceResponse } from '@/lib/types';
-import { BriefcaseIcon, BuildingIcon, ChartIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UsersIcon } from './Icons';
-import JobDetailsModal from './JobDetailsModal';
-import { CardHeader, PageError, PageHeader, PageSkeleton } from './PageParts';
+import type { ContactOutcome, Job, JobsResponse, Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
+import { useAccess } from './AuthGate';
+import { OutcomeText, RemarkField, SaveMark, StudentField, type OutcomePatch, type SaveState } from './FollowUpControls';
+import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import JobDetailsModal, { CopyButton } from './JobDetailsModal';
+import { CardHeader, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 
 // "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
@@ -21,6 +23,31 @@ const initials = (name: string, email: string) =>
 const periodWords = (p: Period) => (p.from ? `on ${p.label}` : p.days === 1 ? 'today' : `in the ${p.label.toLowerCase()}`);
 
 const NEXT_LEVEL = { person: 'courses', course: 'companies', company: 'jobs', job: 'numbers and emails' } as const;
+
+// The "All contacts" list's filters: everything, what still needs doing, or one remark.
+type Filter = 'all' | 'no-remark' | 'unassigned' | RemarkStatus;
+const matches = (row: PerformanceRow, filter: Filter) =>
+  filter === 'all' ? true : filter === 'no-remark' ? !row.outcome?.status : filter === 'unassigned' ? !row.outcome?.student : row.outcome?.status === filter;
+const filterName = (filter: Filter) =>
+  filter === 'all' ? 'All' : filter === 'no-remark' ? 'No remark yet' : filter === 'unassigned' ? 'Not assigned' : (REMARKS.find((r) => r.id === filter)?.label ?? filter);
+// What the list's search looks in: the number/email, company, job, student and who added it.
+const searchText = (row: PerformanceRow) =>
+  [row.value, row.job.company, row.job.title, row.outcome?.student, row.outcome?.note, row.actor.name, row.actor.email].join(' ').toLowerCase();
+
+const EMPTY_OUTCOME: ContactOutcome = { student: '', status: '', note: '', updatedAt: null, updatedBy: null };
+
+// Up to this width the follow-up goes under each number/email instead of in two columns of its own.
+function useNarrow(query = '(max-width: 1023px)') {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const update = () => setNarrow(list.matches);
+    update();
+    list.addEventListener('change', update);
+    return () => list.removeEventListener('change', update);
+  }, [query]);
+  return narrow;
+}
 
 // One row of the drill-down: a person, a course, a company or a job, with its counts. Its toggle shows
 // the level below; a job shows each number and email added to it (the final grain).
@@ -70,32 +97,77 @@ interface Opening {
   problem: string;
 }
 
+// The performance report: who added how many HR phone numbers and emails (a drill-down, person →
+// course → company → job → each number and email), and their follow-up by the calling team: the student
+// each number/email was given to and how it went, edited in place (each choice saves at once). "All
+// contacts" lists every number and email once, to work through without opening any level.
 export default function PerformanceReport() {
   const router = useRouter();
   const period = periodFrom(useSearchParams(), ACTIVITY_PERIODS);
   const meta = useApi<Meta>('meta');
   const [reload, setReload] = useState(0); // bumped after a save in a job's window: the counts may change
   const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), r: reload || undefined }, { auth: true });
+  const mayRecord = useAccess()?.can('record-outcomes') ?? false;
+  const studentsId = useId();
+  const narrow = useNarrow();
+  const [view, setView] = useState<'people' | 'contacts'>('people');
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
   // A job opened from its row, or why it couldn't be.
   const [detail, setDetail] = useState<Job | null>(null);
   const [saved, setSaved] = useState<Record<string, Job>>({});
   const [opening, setOpening] = useState<Opening | null>(null);
 
-  const courses = meta.data?.courses ?? [];
-  const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? id;
+  // Follow-ups changed here since the report loaded (shown at once, before the server answers), and how
+  // each save is going. Saves of one number/email go one after another, in the order they were made.
   const data = perf.data;
-  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const [changed, setChanged] = useState<{ base: PerformanceResponse | null; map: Record<string, ContactOutcome | null> }>({ base: null, map: {} });
+  const [saves, setSaves] = useState<Record<string, SaveState>>({});
+  const [addedStudents, setAddedStudents] = useState<string[]>([]);
+  const queue = useRef<Record<string, Promise<void>>>({});
+  const pending = useRef<Record<string, number>>({});
+
+  const local = changed.base === data ? changed.map : null;
+  const rows = useMemo(
+    () => (data?.rows ?? []).map((row) => (local && outcomeKey(row) in local ? { ...row, outcome: local[outcomeKey(row)] } : row)),
+    [data, local],
+  );
   const tree = useMemo(() => buildTree(rows, (id) => meta.data?.courses.find((c) => c.id === id)?.name ?? id), [rows, meta.data]);
+  // Every number and email once (the newest time it was added), for "All contacts".
+  const contacts = useMemo(() => {
+    const seen = new Map<string, PerformanceRow>();
+    for (const row of rows) if (!seen.has(outcomeKey(row))) seen.set(outcomeKey(row), row);
+    return [...seen.values()];
+  }, [rows]);
+  const students = useMemo(
+    () => [...new Set([...(data?.students ?? []), ...addedStudents])].sort((a, b) => a.localeCompare(b)),
+    [data, addedStudents],
+  );
+
+  // Which contacts the list shows is worked out when the filter, the search or the data changes, not
+  // when a follow-up is saved: a number given a remark under "No remark yet" stays in view until then.
+  const [shown, setShown] = useState<{ filter: Filter; search: string; data: PerformanceResponse | null; keys: Set<string> } | null>(null);
+  let listKeys = shown?.keys ?? new Set<string>();
+  if (!shown || shown.filter !== filter || shown.search !== search || shown.data !== data) {
+    const words = search.trim().toLowerCase();
+    listKeys = new Set(contacts.filter((row) => matches(row, filter) && (!words || searchText(row).includes(words))).map(outcomeKey));
+    setShown({ filter, search, data, keys: listKeys });
+  }
 
   if (meta.error) return <PageError title="Could not load the performance report" error={meta.error} />;
   if (!meta.data) return <PageSkeleton />;
 
+  const courses = meta.data.courses;
+  const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? id;
   const totals = countsOf(rows);
   const top = Math.max(1, ...tree.map((p) => p.total));
   const since = data?.since ?? null;
   const today = istDayOf(new Date().toISOString());
   const startsBeforeTracking = since && data && data.from < istDayOf(since);
+  const listed = contacts.filter((row) => listKeys.has(outcomeKey(row)));
+  const filters: Filter[] = ['all', 'no-remark', 'unassigned', ...REMARKS.map((r) => r.id)];
+  const countOf = (f: Filter) => contacts.filter((row) => matches(row, f)).length;
 
   const toggle = (id: string) =>
     setOpen((ids) => {
@@ -115,25 +187,78 @@ export default function PerformanceReport() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  // Saves one change to a number/email's follow-up: shown at once, sent in order, put back if refused.
+  const saveOutcome = (row: PerformanceRow, patch: OutcomePatch) => {
+    if (!data) return;
+    const key = outcomeKey(row);
+    const before = row.outcome;
+    const next: ContactOutcome = { ...(before ?? EMPTY_OUTCOME), ...patch, ...('status' in patch && patch.status !== 'other' ? { note: '' } : {}) };
+    const put = (outcome: ContactOutcome | null) =>
+      setChanged((c) => ({ base: data, map: { ...(c.base === data ? c.map : {}), [key]: outcome } }));
+    put(next.student || next.status ? next : null);
+    setSaves((s) => ({ ...s, [key]: { state: 'saving' } }));
+    pending.current[key] = (pending.current[key] ?? 0) + 1;
+    const send = async () => {
+      try {
+        const answer = await sendJson<{ outcome: ContactOutcome | null }>('outcomes', 'PUT', { job: row.job.id, field: row.field, value: row.value, ...patch });
+        if (pending.current[key] === 1) put(answer.outcome); // the newest save: the server's answer is what is stored
+        if ('student' in patch && patch.student) setAddedStudents((names) => (names.includes(patch.student) ? names : [...names, patch.student]));
+        setSaves((s) => ({ ...s, [key]: { state: 'saved' } }));
+        setTimeout(() => setSaves((s) => (s[key]?.state === 'saved' ? { ...s, [key]: undefined as unknown as SaveState } : s)), 2500);
+      } catch (err) {
+        put(before);
+        const message = err instanceof ApiError || err instanceof Error ? err.message : 'Not saved';
+        setSaves((s) => ({ ...s, [key]: { state: 'error', message: `Not saved: ${message}` } }));
+      } finally {
+        pending.current[key] -= 1;
+      }
+    };
+    queue.current[key] = (queue.current[key] ?? Promise.resolve()).then(send);
+  };
+
+  // The follow-up controls of one number/email (or what it says, for a role that can't change it).
+  const studentOf = (row: PerformanceRow) =>
+    mayRecord ? (
+      <StudentField value={row.outcome?.student ?? ''} label={row.value} listId={studentsId} onSave={(student) => saveOutcome(row, { student })} />
+    ) : (
+      <span>{row.outcome?.student || <span className="muted">—</span>}</span>
+    );
+  const remarkOf = (row: PerformanceRow) =>
+    mayRecord ? (
+      <span className="remark-cell">
+        <RemarkField field={row.field} status={row.outcome?.status ?? ''} note={row.outcome?.note ?? ''} label={row.value} onSave={(p) => saveOutcome(row, p)} />
+        <SaveMark save={saves[outcomeKey(row)]} />
+      </span>
+    ) : (
+      <OutcomeText outcome={row.outcome ? { ...row.outcome, student: '' } : null} field={row.field} />
+    );
+
   // Opens a job (in the set it was in), if it is still stored.
-  const openJob = async (node: PerfNode) => {
-    if (!node.job) return;
-    setOpening({ id: node.id, problem: '' });
+  const openJob = async (id: string, ref: PerformanceRow['job']) => {
+    setOpening({ id, problem: '' });
     try {
-      const params = { id: node.job.id, days: 1, view: node.job.set === 'nonfiltered' ? 'nonfiltered' : undefined };
+      const params = { id: ref.id, days: 1, view: ref.set === 'nonfiltered' ? 'nonfiltered' : undefined };
       const res = await fetch(apiUrl('jobs', params), { headers: await signInHeader() });
       const body = (await res.json().catch(() => null)) as JobsResponse | null;
       const job = body?.items?.[0];
       if (!res.ok || !job) {
-        setOpening({ id: node.id, problem: 'This job is no longer stored (jobs are kept for 90 days after they were last seen).' });
+        setOpening({ id, problem: 'This job is no longer stored (jobs are kept for 90 days after they were last seen).' });
         return;
       }
       setOpening(null);
       setDetail(saved[job._id] ?? job);
     } catch {
-      setOpening({ id: node.id, problem: 'Could not reach the server. Check your connection and try again.' });
+      setOpening({ id, problem: 'Could not reach the server. Check your connection and try again.' });
     }
   };
+
+  // "2 of 3": how many of a level's numbers/emails have a student / a remark.
+  const progress = (done: number, total: number) => (
+    <span className={`perf-progress ${done === total ? 'done' : ''}`}>
+      {done === total ? <CheckIcon size={12} /> : null}
+      {formatNumber(done)} of {formatNumber(total)}
+    </span>
+  );
 
   const renderNode = (node: PerfNode): ReactNode => {
     const isOpen = open.has(node.id);
@@ -153,8 +278,8 @@ export default function PerformanceReport() {
                 <ChevronRightIcon size={15} className="perf-chevron" />
                 <NodeLabel node={node} />
               </button>
-              {node.level === 'job' && (
-                <button type="button" className="perf-open" onClick={() => openJob(node)} aria-haspopup="dialog" title="Open this job">
+              {node.level === 'job' && node.job && (
+                <button type="button" className="perf-open" onClick={() => node.job && openJob(node.id, node.job)} aria-haspopup="dialog" title="Open this job">
                   <ExternalIcon size={13} />
                   <span className="sr-only">Open {node.label}</span>
                 </button>
@@ -181,6 +306,12 @@ export default function PerformanceReport() {
             )}
           </td>
           <td className="num">{formatNumber(node.jobs)}</td>
+          {!narrow && (
+            <>
+              <td>{progress(node.assigned, node.total)}</td>
+              <td>{progress(node.remarked, node.total)}</td>
+            </>
+          )}
         </tr>
         {isOpen && node.children.map(renderNode)}
         {isOpen &&
@@ -198,7 +329,19 @@ export default function PerformanceReport() {
                     added {formatUpdated(row.at)}
                   </time>
                 </div>
+                {narrow && (
+                  <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
+                    {studentOf(row)}
+                    {remarkOf(row)}
+                  </div>
+                )}
               </td>
+              {!narrow && (
+                <>
+                  <td className="followup-cell">{studentOf(row)}</td>
+                  <td className="followup-cell">{remarkOf(row)}</td>
+                </>
+              )}
             </tr>
           ))}
       </Fragment>
@@ -211,7 +354,7 @@ export default function PerformanceReport() {
         icon={<ChartIcon size={20} />}
         eyebrow={`Team · ${period.label}`}
         title="Performance report"
-        subtitle="How many HR phone numbers and emails each person added, and where. Click a row to drill down: person, course, company, job, then each number and email."
+        subtitle="How many HR phone numbers and emails each person added, and where; and for each one, the student it was given to and how it went."
         actions={
           <PeriodTabs
             period={period}
@@ -248,22 +391,40 @@ export default function PerformanceReport() {
 
       <section className="card card-flush perf-card">
         <CardHeader
-          icon={<ChartIcon />}
+          icon={view === 'people' ? <ChartIcon /> : <ListIcon />}
           title={
             <>
-              Who added what {data && <span className="count-badge">{formatNumber(tree.length)}</span>}
+              {view === 'people' ? 'Who added what' : 'All contacts'}{' '}
+              {data && <span className="count-badge">{formatNumber(view === 'people' ? tree.length : contacts.length)}</span>}
             </>
           }
-          description="Most first at every level. Phone numbers and emails count once each; a number already in the job's posting, or only written differently, doesn't count."
+          description={
+            view === 'people'
+              ? "Most first at every level. Phone numbers and emails count once each; a number already in the job's posting, or only written differently, doesn't count. Open a job to assign each number and email and add its remark."
+              : 'Every number and email once, newest first. Assign a student and pick a remark: each saves by itself.'
+          }
           actions={
             rows.length > 0 && (
               <div className="perf-actions">
-                <button type="button" className="btn btn-sm" onClick={() => setOpen(new Set(allIds(tree)))}>
-                  Expand all
-                </button>
-                <button type="button" className="btn btn-sm" onClick={() => setOpen(new Set())} disabled={!open.size}>
-                  Collapse all
-                </button>
+                <Segmented
+                  label="Show"
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: 'people', label: 'By person' },
+                    { value: 'contacts', label: 'All contacts' },
+                  ]}
+                />
+                {view === 'people' && (
+                  <>
+                    <button type="button" className="btn btn-sm" onClick={() => setOpen(new Set(allIds(tree)))}>
+                      Expand all
+                    </button>
+                    <button type="button" className="btn btn-sm" onClick={() => setOpen(new Set())} disabled={!open.size}>
+                      Collapse all
+                    </button>
+                  </>
+                )}
                 <button type="button" className="btn btn-sm" onClick={download}>
                   <DownloadIcon /> Download CSV
                 </button>
@@ -273,6 +434,11 @@ export default function PerformanceReport() {
         />
 
         {data?.truncated && <p className="note-warning perf-note">Only the newest {formatNumber(rows.length)} are counted. Choose fewer days to see them all.</p>}
+        <datalist id={studentsId}>
+          {students.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
 
         {perf.error ? (
           <p className="activity-empty" role="alert">
@@ -300,9 +466,9 @@ export default function PerformanceReport() {
                 : 'Counting starts with the first HR phone number or email someone adds after signing in.'}
             </p>
           </div>
-        ) : (
+        ) : view === 'people' ? (
           <div className={`table-wrap ${perf.loading ? 'is-loading' : ''}`}>
-            <table className="data-table perf-table">
+            <table className={`data-table perf-table ${narrow ? '' : 'with-followup'}`}>
               <thead>
                 <tr>
                   <th scope="col">Person, then course, company and job</th>
@@ -318,6 +484,12 @@ export default function PerformanceReport() {
                   <th scope="col" className="num">
                     Jobs
                   </th>
+                  {!narrow && (
+                    <>
+                      <th scope="col">Assigned to</th>
+                      <th scope="col">Remark</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>{tree.map(renderNode)}</tbody>
@@ -328,10 +500,103 @@ export default function PerformanceReport() {
                   <td className="num hide-sm">{formatNumber(totals.emails)}</td>
                   <td className="num">{formatNumber(totals.total)}</td>
                   <td className="num">{formatNumber(totals.jobs)}</td>
+                  {!narrow && (
+                    <>
+                      <td>{progress(totals.assigned, totals.total)}</td>
+                      <td>{progress(totals.remarked, totals.total)}</td>
+                    </>
+                  )}
                 </tr>
               </tfoot>
             </table>
             {startsBeforeTracking && <p className="perf-footnote muted">Counting began on {formatDate(since)}; work before that wasn&apos;t recorded.</p>}
+          </div>
+        ) : (
+          <div className={`contacts-view ${perf.loading ? 'is-loading' : ''}`}>
+            <div className="toolbar contacts-toolbar">
+              <label className="search">
+                <SearchIcon />
+                <input
+                  type="search"
+                  placeholder="Search number, company, job or student"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search number, email, company, job or student"
+                />
+              </label>
+              <div className="filter-chips" role="group" aria-label="Show contacts">
+                {filters
+                  .filter((f) => f === 'all' || f === 'no-remark' || f === 'unassigned' || countOf(f) > 0)
+                  .map((f) => (
+                    <button key={f} type="button" className={`filter-chip ${f}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                      {filterName(f)} <span className="chip-count">{formatNumber(countOf(f))}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+            {listed.length ? (
+              <ul className="contact-list">
+                <li className="contact-item contact-head" aria-hidden="true">
+                  <span>Number / email</span>
+                  <span>Company and job</span>
+                  <span>Added</span>
+                  <span>Assigned to</span>
+                  <span>Remark</span>
+                </li>
+                {listed.map((row) => {
+                  const key = outcomeKey(row);
+                  const course = courses.find((c) => c.id === row.job.course);
+                  return (
+                    <li key={key} className="contact-item">
+                      <span className="ci-contact">
+                        <span className={`perf-kind ${row.field}`}>
+                          {row.field === 'phone' ? <PhoneIcon size={13} /> : <MailIcon size={13} />}
+                          <span className="sr-only">{row.field === 'phone' ? 'Phone' : 'Email'}</span>
+                        </span>
+                        <span className="perf-value">{row.value}</span>
+                        <CopyButton value={row.value} what={row.field === 'phone' ? 'phone number' : 'email'} />
+                      </span>
+                      <span className="ci-job">
+                        <button type="button" className="ci-job-open" onClick={() => openJob(key, row.job)} aria-haspopup="dialog" title="Open this job">
+                          <strong>{row.job.company || 'Company not shown'}</strong>
+                          <span>{row.job.title}</span>
+                        </button>
+                        <span className="ci-tags">
+                          {course && (
+                            <span className="ci-course">
+                              <span className="dot" style={{ background: COURSE_COLORS[course.id] }} aria-hidden="true" />
+                              {course.name}
+                            </span>
+                          )}
+                          {row.job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
+                        </span>
+                        {opening?.id === key && opening.problem && (
+                          <span className="field-error" role="status">
+                            {opening.problem}
+                          </span>
+                        )}
+                      </span>
+                      <span className="ci-added muted">
+                        by {row.actor.name || row.actor.email}
+                        <br />
+                        <time dateTime={row.at} title={formatDateTime(row.at)}>
+                          {formatUpdated(row.at)}
+                        </time>
+                      </span>
+                      <span className="ci-student">{studentOf(row)}</span>
+                      <span className="ci-remark">{remarkOf(row)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="activity-empty">
+                <p>
+                  <strong>Nothing here.</strong>
+                </p>
+                <p className="muted">No number or email matches {search.trim() ? 'this search' : `"${filterName(filter)}"`}. Pick another filter or clear the search.</p>
+              </div>
+            )}
           </div>
         )}
       </section>

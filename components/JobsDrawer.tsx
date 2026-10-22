@@ -3,7 +3,7 @@ import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, type Period } from '@/lib/format';
 import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
-import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UsersIcon } from './Icons';
+import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 
 // What was clicked on the dashboard: a heading for the panel, and the job list filters behind it.
@@ -124,8 +124,13 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                       ))}
                     </ul>
                   </div>
-                  {(job.contact.phone || job.contact.email || job.contact.assignedTo.length > 0) && (
+                  {(job.contact.hrNames?.length || job.contact.phone || job.contact.email || job.contact.assignedTo.length > 0) && (
                     <div className="drawer-contact">
+                      {job.contact.hrNames?.length ? (
+                        <span title="HR">
+                          <UserIcon size={12} /> {job.contact.hrNames.join(', ')}
+                        </span>
+                      ) : null}
                       {job.contact.phone && (
                         <span>
                           <PhoneIcon size={12} /> {job.contact.phone}

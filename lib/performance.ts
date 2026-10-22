@@ -2,7 +2,25 @@
 // added (GET /api/performance, one row each), grouped person → course → company → job, each level
 // with its own counts. The rows under a job are the final grain: each number and email, and when.
 import type { Period } from './format';
-import type { CourseId, PerformanceRow } from './types';
+import type { CourseId, PerformanceRow, RemarkStatus } from './types';
+
+// The remarks the calling team chooses from (the server's REMARKS), in the order shown, and the colour
+// each shows in: good (CV shared), warn (try again), bad (dead end), neutral.
+export const REMARKS: { id: RemarkStatus; label: string; tone: 'good' | 'warn' | 'bad' | 'neutral' | 'accent' }[] = [
+  { id: 'dnp', label: 'DNP', tone: 'warn' },
+  { id: 'wrong', label: 'Wrong number', tone: 'bad' },
+  { id: 'not-person', label: 'Not the correct person', tone: 'bad' },
+  { id: 'cv-shared', label: 'CV shared', tone: 'good' },
+  { id: 'no-openings', label: 'No openings', tone: 'neutral' },
+  { id: 'other', label: 'Others', tone: 'accent' },
+];
+
+// A remark's name for a number or an email ("Wrong number" reads "Wrong email" for an email).
+export const remarkName = (status: RemarkStatus, field: 'phone' | 'email') =>
+  status === 'wrong' && field === 'email' ? 'Wrong email' : (REMARKS.find((r) => r.id === status)?.label ?? status);
+
+// The same number or email of the same job: one follow-up, whichever row it is shown on.
+export const outcomeKey = (row: Pick<PerformanceRow, 'job' | 'field' | 'key'>) => `${row.job.id}|${row.field}|${row.key}`;
 
 // Today / Last 7 days / Last 30 days of people's work (the days end today, not on a collection day).
 export const ACTIVITY_PERIODS: Period[] = [
@@ -19,6 +37,8 @@ export interface Counts {
   emails: number;
   total: number; // phones + emails
   jobs: number; // different jobs they were added to
+  assigned: number; // of total: given to a student
+  remarked: number; // of total: with a remark
 }
 
 export interface PerfNode extends Counts {
@@ -35,7 +55,14 @@ export interface PerfNode extends Counts {
 
 export function countsOf(rows: PerformanceRow[]): Counts {
   const phones = rows.filter((r) => r.field === 'phone').length;
-  return { phones, emails: rows.length - phones, total: rows.length, jobs: new Set(rows.map((r) => String(r.job.id))).size };
+  return {
+    phones,
+    emails: rows.length - phones,
+    total: rows.length,
+    jobs: new Set(rows.map((r) => String(r.job.id))).size,
+    assigned: rows.filter((r) => r.outcome?.student).length,
+    remarked: rows.filter((r) => r.outcome?.status).length,
+  };
 }
 
 // What a row is grouped by at each level. Companies ignore letter case and spaces around the name.
@@ -98,7 +125,7 @@ const csvCell = (value: unknown) => {
 
 // One line per number or email added (the final grain), for a spreadsheet.
 export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id) {
-  const header = ['Added (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value'];
+  const header = ['Added (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value', 'Assigned to', 'Remark'];
   const lines = rows.map((r) =>
     [
       istStamp(r.at),
@@ -111,6 +138,8 @@ export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) 
       r.job.set === 'nonfiltered' ? 'Non-filtered' : 'Filtered',
       r.field === 'phone' ? 'Phone' : 'Email',
       r.value,
+      r.outcome?.student ?? '',
+      r.outcome?.status ? (r.outcome.status === 'other' ? `Others: ${r.outcome.note}` : remarkName(r.outcome.status, r.field)) : '',
     ]
       .map(csvCell)
       .join(','),

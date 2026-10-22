@@ -20,7 +20,9 @@ import {
   EntryList,
   errorFromServer,
   FIELD_ORDER,
+  LIST_ORDER,
   LISTS,
+  profileLabel,
   REMARKS_LIMIT,
   sameDraft,
   splitList,
@@ -38,14 +40,25 @@ import {
   CloseIcon,
   CopyIcon,
   ExternalIcon,
+  LinkIcon,
   MailIcon,
   MapPinIcon,
   NoteIcon,
   PencilIcon,
   PhoneIcon,
   PlusIcon,
+  UserIcon,
   UsersIcon,
 } from './Icons';
+
+// The icon beside each list of boxes while editing.
+const LIST_ICONS: Record<ListKey, ReactNode> = {
+  hrName: <UserIcon size={14} />,
+  hrProfile: <LinkIcon size={14} />,
+  phone: <PhoneIcon size={14} />,
+  email: <MailIcon size={14} />,
+  assignedTo: <UsersIcon size={14} />,
+};
 
 // Other openings listed under the same company name: how far back, and how many before "Show all".
 const COMPANY_DAYS = 90;
@@ -82,7 +95,7 @@ async function copyText(text: string, from: HTMLElement) {
   }
 }
 
-function CopyButton({ value, what }: { value: string; what: string }) {
+export function CopyButton({ value, what }: { value: string; what: string }) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -268,7 +281,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   const titleId = useId();
   const contactId = useId();
   const factsId = useId();
-  const labelIds = { phone: useId(), email: useId(), assignedTo: useId(), remarks: useId() };
+  const labelIds = { hrName: useId(), hrProfile: useId(), phone: useId(), email: useId(), assignedTo: useId(), remarks: useId() };
   const notesErrorId = useId();
 
   const [draft, setDraft] = useState<FollowUpInput | null>(null); // null = not editing
@@ -284,6 +297,8 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   const original = useMemo(() => draftFrom(contact), [contact]);
   const changed = draft !== null && !sameDraft(draft, original);
   const course = courses.find((c) => c.id === job.course);
+  const hrNames = contact.hrNames ?? [];
+  const hrProfiles = (contact.hrProfiles ?? []).filter((url) => /^https?:\/\//i.test(url)); // only web links are ever opened
   const phones = splitList(contact.phone);
   const emails = splitList(contact.email);
   const links = listingOrder(job);
@@ -448,7 +463,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                 icon={<PhoneIcon size={16} />}
                 id={contactId}
                 title="HR contact & follow-up"
-                note={editing ? 'Up to 5 numbers and 5 emails, and up to 20 students' : 'Typed in by your team, or found in the job post'}
+                note={editing ? 'Up to 10 of each: HR names, profile links, numbers and emails; up to 20 students' : 'Typed in by your team, or found in the job post'}
               >
                 {justSaved && (
                   <span className="saved-pill" role="status">
@@ -469,10 +484,10 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                       </div>
                     </div>
                   )}
-                  {(['phone', 'email', 'assignedTo'] as ListKey[]).map((key) => (
+                  {LIST_ORDER.map((key) => (
                     <div className="edit-field" key={key}>
                       <span className="edit-label" id={labelIds[key]}>
-                        {key === 'phone' ? <PhoneIcon size={14} /> : key === 'email' ? <MailIcon size={14} /> : <UsersIcon size={14} />}
+                        {LIST_ICONS[key]}
                         {LISTS[key].label}
                       </span>
                       <EntryList
@@ -522,6 +537,61 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                 </fieldset>
               ) : (
                 <dl className="contact-details">
+                  <div className="contact-row">
+                    <dt>
+                      <UserIcon size={14} /> HR name
+                    </dt>
+                    <dd>
+                      {hrNames.length ? (
+                        <>
+                          <ul className="value-list">
+                            {hrNames.map((name) => (
+                              <li key={name}>
+                                <span className="hr-name">{name}</span>
+                                <CopyButton value={name} what="name" />
+                              </li>
+                            ))}
+                          </ul>
+                          {mayEdit && hrNames.length < LISTS.hrName.max && (
+                            <button type="button" className="btn-link add-another" onClick={() => startEditing('hrName', true)}>
+                              Add another HR name
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('hrName')}>Add HR name</AddButton>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="contact-row">
+                    <dt>
+                      <LinkIcon size={14} /> HR profile
+                    </dt>
+                    <dd>
+                      {hrProfiles.length ? (
+                        <>
+                          <ul className="value-list">
+                            {hrProfiles.map((url) => (
+                              <li key={url}>
+                                <a href={url} target="_blank" rel="noopener noreferrer" className="profile-link" title={url}>
+                                  {profileLabel(url)}
+                                  <ExternalIcon size={12} />
+                                </a>
+                                <CopyButton value={url} what="profile link" />
+                              </li>
+                            ))}
+                          </ul>
+                          {mayEdit && hrProfiles.length < LISTS.hrProfile.max && (
+                            <button type="button" className="btn-link add-another" onClick={() => startEditing('hrProfile', true)}>
+                              Add another profile link
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <AddButton allowed={mayEdit} onClick={() => startEditing('hrProfile')}>Add profile link</AddButton>
+                      )}
+                    </dd>
+                  </div>
                   <div className="contact-row">
                     <dt>
                       <PhoneIcon size={14} /> Phone

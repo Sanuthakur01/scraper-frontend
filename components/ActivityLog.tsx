@@ -6,17 +6,22 @@ import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, dayHeading, formatDateTime, formatNumber, formatTime, istDayOf } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
 import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
-import { HistoryIcon, MailIcon, NoteIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
 const PAGE = 30; // changes loaded at a time
 
 const FIELDS: Record<ActivityChange['field'], { label: string; icon: ReactNode }> = {
+  hrName: { label: 'HR name', icon: <UserIcon size={13} /> },
+  hrProfile: { label: 'HR profile', icon: <LinkIcon size={13} /> },
   phone: { label: 'Phone', icon: <PhoneIcon size={13} /> },
   email: { label: 'Email', icon: <MailIcon size={13} /> },
   assignedTo: { label: 'Assigned to', icon: <UsersIcon size={13} /> },
   remarks: { label: 'Notes', icon: <NoteIcon size={13} /> },
+  // The performance report's follow-up of one number or email (named beside it).
+  contactStudent: { label: 'Student', icon: <UserIcon size={13} /> },
+  contactRemark: { label: 'Remark', icon: <MessageIcon size={13} /> },
 };
 
 const ACTION_LABELS: Record<ActivityAction, string> = { added: 'Added', edited: 'Edited', removed: 'Removed' };
@@ -91,7 +96,7 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
         </p>
         <p className="activity-what">
           <span className={`action-pill ${entry.action}`}>{ACTION_LABELS[entry.action]}</span>
-          <span>HR details on</span>
+          <span>{entry.changes.some((c) => c.contact) ? 'follow-up on' : 'HR details on'}</span>
           <button type="button" className="activity-job" onClick={() => onOpenJob(entry)} aria-haspopup="dialog" title="Open this job">
             {job.title || 'a job'}
           </button>
@@ -109,6 +114,12 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
             <li key={change.field}>
               <span className="change-field">
                 {FIELDS[change.field].icon} {FIELDS[change.field].label}
+                {change.contact && (
+                  <span className="change-contact" title={`For ${change.contact.value}`}>
+                    {change.contact.field === 'phone' ? <PhoneIcon size={11} /> : <MailIcon size={11} />}
+                    {change.contact.value}
+                  </span>
+                )}
               </span>
               <span className={`change-kind ${change.change}`}>{change.change}</span>
               <ChangeValues change={change} />
