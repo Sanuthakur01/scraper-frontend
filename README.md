@@ -12,6 +12,8 @@ Built with Next.js and TypeScript. All data comes from the tracker's Express API
 - **Hiring partners** (`/partners`): companies that keep hiring for the courses, with HR contacts and a CSV download.
 - **Activity** (`/activity`): who added, changed or removed which job's HR phone numbers, emails, students and notes, and when, with their email from their sign-in. Filter by person, kind of change, job or company; click a job to open it.
 
+**IJF AI** (the **Ask IJF AI** button on every page, Ctrl+K): a chat that answers questions from the dashboard's data, shows HR contacts in cards, and proposes changes that are saved only on Confirm (components/AiChat.tsx; the server keeps phone numbers and emails away from OpenAI).
+
 Everything is behind a Clerk sign-in. Only people whose Clerk public metadata has an allowed role (`SUPER_ADMIN`, `ADMIN`, `PLACEMENT_STAFF`, `RESEARCH_TEAM`) get in; what each role may do is in [lib/access.ts](lib/access.ts).
 
 ## Run it

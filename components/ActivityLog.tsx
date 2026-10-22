@@ -6,7 +6,7 @@ import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, dayHeading, formatDateTime, formatNumber, formatTime, istDayOf } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
 import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
-import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, UserIcon, UsersIcon } from './Icons';
+import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
@@ -108,6 +108,11 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
             </span>
           )}
           {job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
+          {entry.via === 'ai' && (
+            <span className="via-ai" title="Proposed by IJF AI and confirmed by this person">
+              <SparklesIcon size={11} /> via IJF AI
+            </span>
+          )}
         </p>
         <ul className="activity-changes">
           {entry.changes.map((change) => (

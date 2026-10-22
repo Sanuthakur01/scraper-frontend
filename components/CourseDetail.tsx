@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useApi } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
 import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, percent, periodFrom, periodParams, periodQuery } from '@/lib/format';
-import { POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
+import { filtersFromAddress, POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
 import type { CourseDetailResponse, CourseId, Meta, PostingAgeBucket, TrendsResponse } from '@/lib/types';
 import {
   ArrowDownIcon,
@@ -90,14 +90,32 @@ function CardButton({
 // (that's what people open a course for), then where the jobs come from and what they ask for.
 export default function CourseDetail({ courseId }: { courseId: CourseId }) {
   const router = useRouter();
-  const period = periodFrom(useSearchParams());
+  const searchParams = useSearchParams();
+  const period = periodFrom(searchParams);
   const query = periodQuery(period);
+  // Filters in the address (a link from IJF AI): shown in the job list, scrolled into view.
+  const linked = JSON.stringify(filtersFromAddress(searchParams));
   const jobFilters = useJobFilters();
   const { view } = useDataView();
 
   const meta = useApi<Meta>('meta');
   const detail = useApi<CourseDetailResponse>(`course/${courseId}`, periodParams(period));
   const trends = useApi<TrendsResponse>('trends', { days: 30 });
+
+  // A link's filters: applied once each, then the job list scrolled into view when it is there.
+  const applied = useRef('');
+  useEffect(() => {
+    if (linked === '{}' || applied.current === linked) return;
+    applied.current = linked;
+    jobFilters.show(JSON.parse(linked));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the address's filters change
+  }, [linked]);
+  const loaded = Boolean(detail.data);
+  useEffect(() => {
+    if (linked === '{}' || !loaded) return;
+    const timer = setTimeout(() => document.getElementById('jobs')?.scrollIntoView({ block: 'start' }), 200);
+    return () => clearTimeout(timer);
+  }, [linked, loaded]);
 
   if (meta.error || detail.error) return <PageError title="Could not load this course" error={meta.error ?? detail.error} />;
   if (!meta.data || !detail.data) return <PageSkeleton />;

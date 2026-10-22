@@ -24,6 +24,7 @@ export interface Meta {
   scheduleLabel: string;
   filters: { experience: { min: number; max: number | null }; excludedCompanies: string[] }; // max null: no upper limit
   lastRun: LastRun | null;
+  aiEnabled?: boolean; // IJF AI is set up on the server
   dataDays: { first: string | null; last: string }; // the oldest and newest IST day with stored jobs
   demo: boolean;
 }
@@ -253,6 +254,7 @@ export interface ActivityEntry {
   at: string;
   actor: { userId: string; email: string; name?: string; role?: string | null };
   action: ActivityAction;
+  via?: 'ai'; // made with IJF AI (confirmed by the person)
   job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
   changes: ActivityChange[];
 }
@@ -294,4 +296,84 @@ export interface PerformanceResponse {
   rows: PerformanceRow[]; // newest first
   truncated: boolean;
   students: string[]; // every student name used so far, to suggest
+}
+
+// ---------- IJF AI (/api/chat…) ----------
+
+export type ChatPeriod = { days?: number; from?: string; to?: string };
+
+// Cards shown beside an answer, with the real data (contacts included: they never go to the AI).
+export interface ChatJobsCard {
+  type: 'jobs';
+  total: number;
+  withHrDetails: number;
+  period: ChatPeriod;
+  view: 'filtered' | 'nonfiltered';
+  items: { id: string; title: string; company: string; course: CourseId; cities: string[]; set: 'filtered' | 'nonfiltered' }[];
+  links: { label: string; href: string; view: 'filtered' | 'nonfiltered' }[];
+}
+export interface ChatContactsCard {
+  type: 'contacts';
+  jobs: {
+    id: string;
+    title: string;
+    company: string;
+    course: CourseId;
+    set: 'filtered' | 'nonfiltered';
+    hrNames: string[];
+    hrProfiles: string[];
+    phones: string[];
+    emails: string[];
+    fromPost: { phone: boolean; email: boolean };
+    students: string[];
+  }[];
+}
+export interface ChatFollowUpsCard {
+  type: 'followups';
+  total: number;
+  items: { jobId: string; job: string; company: string; course: CourseId; field: 'phone' | 'email'; contact: string; student: string; remark: string; addedBy: string; addedAt: string }[];
+}
+export type ChatCard = ChatJobsCard | ChatContactsCard | ChatFollowUpsCard;
+
+// A change IJF AI proposed, done only when the person clicks Confirm.
+export interface ChatAction {
+  id?: string; // set once the answer is saved
+  type: 'add-hr-details' | 'set-follow-up';
+  summary: string;
+  status: 'pending' | 'done' | 'failed' | 'cancelled';
+  error?: string;
+}
+
+export interface ChatMessage {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  at?: string;
+  cards: ChatCard[];
+  actions: ChatAction[];
+  feedback?: 'up' | 'down' | '';
+  error?: string;
+  pending?: boolean; // still being answered
+  status?: string; // what it is looking up now
+  retry?: string; // the question, when it can be asked again (the answer was cut off)
+}
+
+export interface ChatSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface ChatReminder {
+  id: string;
+  text: string;
+  href?: string;
+  ask: string;
+}
+
+export interface ChatUsage {
+  since: string;
+  model: string;
+  people: { email: string; questions: number; promptTokens: number; completionTokens: number; activeDays: number; up: number; down: number }[];
+  briefings: { count: number; promptTokens: number; completionTokens: number };
 }

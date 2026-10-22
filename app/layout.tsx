@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import AppHeader from '@/components/AppHeader';
+import AiChat from '@/components/AiChat';
 import AuthGate from '@/components/AuthGate';
 import { NonFilteredNote } from '@/components/DataViewToggle';
 import { DataViewProvider } from '@/lib/dataView';
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <AppHeader />
             <NonFilteredNote />
             {children}
+            <AiChat />
           </DataViewProvider>
         </AuthGate>
         <footer className="app-footer">

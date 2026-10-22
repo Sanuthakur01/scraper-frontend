@@ -19,13 +19,14 @@ export const ROLE_LABELS: Record<Role, string> = {
 //   view             - open the dashboard, course pages, hiring partners, activity and performance report
 //   edit-hr-details  - add or change a job's HR phone numbers, emails, students and notes
 //   record-outcomes  - in the performance report: give an HR number or email to a student, and record how it went
+//   view-ai-usage    - see how much each person uses IJF AI (admins)
 // Every role may do everything for now. To restrict a role, take a permission out of its list: the
 // dashboard hides what that role can't do.
-export type Permission = 'view' | 'edit-hr-details' | 'record-outcomes';
+export type Permission = 'view' | 'edit-hr-details' | 'record-outcomes' | 'view-ai-usage';
 
 export const PERMISSIONS: Record<Role, readonly Permission[]> = {
-  SUPER_ADMIN: ['view', 'edit-hr-details', 'record-outcomes'],
-  ADMIN: ['view', 'edit-hr-details', 'record-outcomes'],
+  SUPER_ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage'],
+  ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage'],
   PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes'],
   RESEARCH_TEAM: ['view', 'edit-hr-details', 'record-outcomes'],
 };

@@ -16,6 +16,7 @@ export interface JobFilters {
   day: string; // one IST day ('2026-10-17') instead of the period
   sites: string; // '2': listed on two or more sites
   salary: string; // 'shown': the post shows a salary
+  hr: string; // 'none': no HR details yet; 'some': has HR details
   q: string; // search text
 }
 
@@ -31,8 +32,21 @@ export const NO_FILTERS: JobFilters = {
   day: '',
   sites: '',
   salary: '',
+  hr: '',
   q: '',
 };
+
+// The filters in a page address (?company=Acme&city=Pune…), e.g. from an IJF AI answer's "Show in the job
+// list". Only these keys; empty ones ignored.
+export function filtersFromAddress(params: { get(name: string): string | null }): Partial<JobFilters> {
+  const found: Partial<JobFilters> = {};
+  for (const key of Object.keys(NO_FILTERS) as (keyof JobFilters)[]) {
+    if (key === 'course') continue;
+    const value = params.get(key);
+    if (value) found[key] = value;
+  }
+  return found;
+}
 
 // Shows the jobs behind a number: on a course page in its job list, on the dashboard in a side panel
 // (title says what was clicked).
@@ -58,6 +72,7 @@ export function filterChips(f: JobFilters): { key: keyof JobFilters; label: stri
   if (f.age) chips.push({ key: 'age', label: `Post age: ${POSTING_AGES.find((a) => a.id === f.age)?.label ?? f.age}` });
   if (f.sites) chips.push({ key: 'sites', label: 'Listed on 2+ sites' });
   if (f.salary) chips.push({ key: 'salary', label: 'Salary shown' });
+  if (f.hr) chips.push({ key: 'hr', label: f.hr === 'none' ? 'No HR details yet' : 'Has HR details' });
   return chips;
 }
 

@@ -103,16 +103,24 @@ interface Opening {
 // contacts" lists every number and email once, to work through without opening any level.
 export default function PerformanceReport() {
   const router = useRouter();
-  const period = periodFrom(useSearchParams(), ACTIVITY_PERIODS);
+  const searchParams = useSearchParams();
+  const period = periodFrom(searchParams, ACTIVITY_PERIODS);
   const meta = useApi<Meta>('meta');
   const [reload, setReload] = useState(0); // bumped after a save in a job's window: the counts may change
   const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), r: reload || undefined }, { auth: true });
   const mayRecord = useAccess()?.can('record-outcomes') ?? false;
   const studentsId = useId();
   const narrow = useNarrow();
-  const [view, setView] = useState<'people' | 'contacts'>('people');
+  // ?show=contacts&filter=no-remark (a link from IJF AI's reminders) opens "All contacts" with that filter.
+  const linkedShow = searchParams.get('show') === 'contacts' ? 'contacts' : null;
+  const linkedFilter = searchParams.get('filter') ?? '';
+  const [view, setView] = useState<'people' | 'contacts'>(linkedShow ?? 'people');
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>((linkedFilter as Filter) || 'all');
+  useEffect(() => {
+    if (linkedShow) setView(linkedShow);
+    if (linkedFilter) setFilter(linkedFilter as Filter);
+  }, [linkedShow, linkedFilter]);
   const [search, setSearch] = useState('');
   const [course, setCourse] = useState(''); // "All contacts": one course's numbers/emails ('' = all)
   // A job opened from its row, or why it couldn't be.
