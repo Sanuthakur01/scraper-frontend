@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
+import { useAccess } from './AuthGate';
+import { CONTACT_COLUMNS } from './ContactCell';
+import type { FieldKey } from './ContactForm';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
 import { experienceBands, formatNumber, periodParams, periodQuery, type Period } from '@/lib/format';
@@ -106,6 +109,9 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
   // progress line moves at once. A reload's count already includes them, so it counts from zero again.
   const [contactChange, setContactChange] = useState<{ base: JobsResponse | null; n: number }>({ base: null, n: 0 });
   const side = useSideScroll();
+  // The HR cell being edited (one at a time), and whether this person may edit them at all.
+  const [editingCell, setEditingCell] = useState<{ jobId: string; field: FieldKey } | null>(null);
+  const mayEdit = useAccess()?.can('edit-hr-details') ?? false;
   const section = useRef<HTMLElement>(null);
 
   // Previous / Next: show the new page from its first job. The buttons are at the bottom of the list,
@@ -153,7 +159,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
             {data && <span className="count-badge">{formatNumber(data.total)}</span>}
           </>
         }
-        description="Each job is shown once, even when several sites list it. Click a company name to see and edit its HR contact, students and notes."
+        description="Each job is shown once, even when several sites list it. Click an HR cell to fill it in (← → scroll to the rest), or a company name for everything about the job."
         actions={
           <>
             {data && data.total > 0 && <ContactProgress done={withContact} total={data.total} />}
@@ -252,6 +258,11 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
               <th scope="col">Experience</th>
               <th scope="col">Found on</th>
               <th scope="col">Posted</th>
+              {CONTACT_COLUMNS.map((c) => (
+                <th scope="col" key={c.field} className={`hr-head hr-${c.field}`}>
+                  {c.label}
+                </th>
+              ))}
               {expanded && (
                 <>
                   <th scope="col">Salary</th>
@@ -272,6 +283,10 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
                   courseName={lockedCourse ? undefined : courseName[job.course]}
                   expanded={expanded}
                   onOpen={setDetail}
+                  mayEdit={mayEdit}
+                  editing={editingCell?.jobId === job._id ? editingCell.field : null}
+                  onEdit={(field) => setEditingCell(field ? { jobId: job._id, field } : null)}
+                  onSaved={onSaved}
                 />
               );
             })}

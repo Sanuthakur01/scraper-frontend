@@ -114,6 +114,7 @@ export default function PerformanceReport() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [course, setCourse] = useState(''); // "All contacts": one course's numbers/emails ('' = all)
   // A job opened from its row, or why it couldn't be.
   const [detail, setDetail] = useState<Job | null>(null);
   const [saved, setSaved] = useState<Record<string, Job>>({});
@@ -145,14 +146,16 @@ export default function PerformanceReport() {
     [data, addedStudents],
   );
 
-  // Which contacts the list shows is worked out when the filter, the search or the data changes, not
-  // when a follow-up is saved: a number given a remark under "No remark yet" stays in view until then.
-  const [shown, setShown] = useState<{ filter: Filter; search: string; data: PerformanceResponse | null; keys: Set<string> } | null>(null);
+  // Which contacts the list shows is worked out when the course, the filter, the search or the data
+  // changes, not when a follow-up is saved: a number given a remark under "No remark yet" stays in view
+  // until then.
+  const inCourse = (row: PerformanceRow) => !course || row.job.course === course;
+  const [shown, setShown] = useState<{ course: string; filter: Filter; search: string; data: PerformanceResponse | null; keys: Set<string> } | null>(null);
   let listKeys = shown?.keys ?? new Set<string>();
-  if (!shown || shown.filter !== filter || shown.search !== search || shown.data !== data) {
+  if (!shown || shown.course !== course || shown.filter !== filter || shown.search !== search || shown.data !== data) {
     const words = search.trim().toLowerCase();
-    listKeys = new Set(contacts.filter((row) => matches(row, filter) && (!words || searchText(row).includes(words))).map(outcomeKey));
-    setShown({ filter, search, data, keys: listKeys });
+    listKeys = new Set(contacts.filter((row) => inCourse(row) && matches(row, filter) && (!words || searchText(row).includes(words))).map(outcomeKey));
+    setShown({ course, filter, search, data, keys: listKeys });
   }
 
   if (meta.error) return <PageError title="Could not load the performance report" error={meta.error} />;
@@ -167,7 +170,9 @@ export default function PerformanceReport() {
   const startsBeforeTracking = since && data && data.from < istDayOf(since);
   const listed = contacts.filter((row) => listKeys.has(outcomeKey(row)));
   const filters: Filter[] = ['all', 'no-remark', 'unassigned', ...REMARKS.map((r) => r.id)];
-  const countOf = (f: Filter) => contacts.filter((row) => matches(row, f)).length;
+  // The chips count within the chosen course.
+  const countOf = (f: Filter) => contacts.filter((row) => inCourse(row) && matches(row, f)).length;
+  const inCourseCount = (id: string) => contacts.filter((row) => row.job.course === id).length;
 
   const toggle = (id: string) =>
     setOpen((ids) => {
@@ -524,6 +529,14 @@ export default function PerformanceReport() {
                   aria-label="Search number, email, company, job or student"
                 />
               </label>
+              <select className="select course-select" value={course} onChange={(e) => setCourse(e.target.value)} aria-label="Course">
+                <option value="">All courses · {formatNumber(contacts.length)}</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} · {formatNumber(inCourseCount(c.id))}
+                  </option>
+                ))}
+              </select>
               <div className="filter-chips" role="group" aria-label="Show contacts">
                 {filters
                   .filter((f) => f === 'all' || f === 'no-remark' || f === 'unassigned' || countOf(f) > 0)
@@ -594,7 +607,10 @@ export default function PerformanceReport() {
                 <p>
                   <strong>Nothing here.</strong>
                 </p>
-                <p className="muted">No number or email matches {search.trim() ? 'this search' : `"${filterName(filter)}"`}. Pick another filter or clear the search.</p>
+                <p className="muted">
+                  No number or email {course ? `for ${courseName(course)} ` : ''}matches {search.trim() ? 'this search' : `"${filterName(filter)}"`}. Pick another
+                  course or filter, or clear the search.
+                </p>
               </div>
             )}
           </div>

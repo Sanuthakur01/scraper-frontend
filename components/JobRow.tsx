@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder } from '@/lib/format';
 import type { Job } from '@/lib/types';
-import { contactSummary, ContactIcons } from './ContactForm';
+import ContactCell, { CONTACT_COLUMNS } from './ContactCell';
+import { contactSummary, ContactIcons, type FieldKey } from './ContactForm';
 import { ExternalIcon } from './Icons';
 
 const SKILLS_SHOWN = 3;
@@ -46,12 +47,16 @@ interface Props {
   courseName?: string; // shown under the title when the list has several courses
   expanded: boolean; // also show salary, skills, work mode and when we found it
   onOpen: (job: Job) => void; // the company name was clicked: open the job's details window
+  mayEdit: boolean; // the signed-in person's role may edit HR details
+  editing: FieldKey | null; // the HR column being edited in this row, if any
+  onEdit: (field: FieldKey | null) => void; // open one of this row's HR cells (null: close it)
+  onSaved: (job: Job) => void;
 }
 
-// One job in the job list. The company name opens the job's details window, where its HR phone
-// numbers, emails, students and notes are shown and edited; small icons under the name say which of
-// those the job already has.
-export default function JobRow({ job, courseName, expanded, onOpen }: Props) {
+// One job in the job list: what the job is, then its HR details in columns that are edited right
+// there (ContactCell). The company name opens the job's details window with everything about it; small
+// icons under the name say which HR details the job already has.
+export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, editing, onEdit, onSaved }: Props) {
   const summary = contactSummary(job.contact);
   const company = job.company || 'Company not shown';
 
@@ -109,6 +114,19 @@ export default function JobRow({ job, courseName, expanded, onOpen }: Props) {
         </ul>
       </td>
       <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
+
+      {CONTACT_COLUMNS.map(({ field }) => (
+        <ContactCell
+          key={field}
+          job={job}
+          field={field}
+          mayEdit={mayEdit}
+          editing={editing === field}
+          onEdit={() => onEdit(field)}
+          onClose={() => onEdit(null)}
+          onSaved={onSaved}
+        />
+      ))}
 
       {expanded && (
         <>

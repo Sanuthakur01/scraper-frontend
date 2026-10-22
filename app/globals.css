@@ -2066,6 +2066,176 @@ a.kpi-course:hover .kpi-cta svg {
   min-width: 220px;
 }
 
+/* With the HR columns beside it, the Job column keeps to a sensible width (titles wrap) */
+.jobs-table .job-cell {
+  width: 300px;
+  max-width: 320px;
+}
+
+/* ---------- The job list's HR columns: edited right in the table (ContactCell) ---------- */
+
+.jobs-table th.hr-head {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+  color: var(--accent-text);
+}
+
+.jobs-table .hr-col {
+  width: 170px;
+  min-width: 170px;
+  max-width: 200px;
+  vertical-align: middle;
+}
+
+.jobs-table .hr-col.hr-remarks,
+.jobs-table th.hr-remarks {
+  min-width: 210px;
+}
+
+/* Being edited: the cell grows so there's room to write */
+.jobs-table .hr-col.is-editing {
+  width: 320px;
+  min-width: 320px;
+  max-width: none;
+  vertical-align: top;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.jobs-table .hr-col.hr-remarks.is-editing {
+  width: 380px;
+  min-width: 380px;
+}
+
+/* Looks like an input box: what the job has, or a dashed "+ Add …" when it has nothing */
+.cell-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: text;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.cell-box.empty {
+  border-style: dashed;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.cell-box:hover {
+  border-color: var(--accent);
+}
+
+.cell-box:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.cell-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.cell-more,
+.cell-source {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.cell-source {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
+.cell-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+
+.cell-box:hover .cell-placeholder {
+  color: var(--accent-text);
+}
+
+.cell-saved {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--good-bg);
+  color: var(--good-text);
+}
+
+.cell-box.just-saved {
+  border-color: color-mix(in srgb, var(--good-text) 45%, transparent);
+}
+
+.cell-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.cell-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.cell-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.cell-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.cell-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.cell-actions .btn {
+  gap: 5px;
+}
+
+.cell-actions .spinner {
+  width: 12px;
+  height: 12px;
+}
+
 .job-title {
   display: block;
   font-weight: 600;
@@ -3291,6 +3461,11 @@ button.rank-row:disabled {
   padding: 0 22px 14px;
 }
 
+.contacts-toolbar .course-select {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
@@ -3455,6 +3630,9 @@ button.rank-row:disabled {
 @media (max-width: 760px) {
   .contacts-toolbar {
     padding: 0 16px 12px;
+  }
+  .contacts-toolbar .course-select {
+    flex: 1 1 100%;
   }
   .contact-head {
     display: none;
