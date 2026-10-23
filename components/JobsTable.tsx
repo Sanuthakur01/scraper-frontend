@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
 import { useAccess } from './AuthGate';
-import { CONTACT_COLUMNS } from './ContactCell';
+import { CONTACT_COLUMNS, PROFILE_COLUMN, type ContactColumn } from './ContactCell';
 import type { FieldKey } from './ContactForm';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
@@ -41,6 +41,16 @@ function ContactProgress({ done, total }: { done: number; total: number }) {
 }
 
 // A filter that has no dropdown (set by a card or a chart): its name, and × to remove it.
+// The head of an HR details column, with its icon.
+const hrHead = (c: ContactColumn) => (
+  <th scope="col" key={c.field} className={`hr-head hr-${c.field}`}>
+    <span className="hr-head-label">
+      {c.icon}
+      {c.label}
+    </span>
+  </th>
+);
+
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="filter-chip">
@@ -159,7 +169,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
             {data && <span className="count-badge">{formatNumber(data.total)}</span>}
           </>
         }
-        description="Each job is shown once, even when several sites list it. Click an HR cell to fill it in (← → scroll to the rest), or a company name for everything about the job."
+        description="Each job is shown once, even when several sites list it. Edit HR details with the pencil beside them (← → scroll to the rest), or click a company name for everything about the job."
         actions={
           <>
             {data && data.total > 0 && <ContactProgress done={withContact} total={data.total} />}
@@ -258,17 +268,14 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
               <th scope="col">Experience</th>
               <th scope="col">Found on</th>
               <th scope="col">Posted</th>
-              {CONTACT_COLUMNS.map((c) => (
-                <th scope="col" key={c.field} className={`hr-head hr-${c.field}`}>
-                  {c.label}
-                </th>
-              ))}
+              {CONTACT_COLUMNS.map(hrHead)}
               {expanded && (
                 <>
                   <th scope="col">Salary</th>
                   <th scope="col">Skills</th>
                   <th scope="col">Work mode</th>
                   <th scope="col">Found by us</th>
+                  {hrHead(PROFILE_COLUMN)}
                 </>
               )}
             </tr>

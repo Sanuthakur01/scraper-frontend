@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { Fragment, useState, type CSSProperties, type MouseEvent } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDate, formatNumber, percent } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse } from '@/lib/types';
-import { BriefcaseIcon, BuildingIcon, DownloadIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import CompanyJobs from './CompanyJobs';
+import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
 import { CardHeader, Freshness, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
 const SHOWN = 25; // companies listed before "Show all"
@@ -12,7 +13,8 @@ const SHOWN = 25; // companies listed before "Show all"
 type ContactFilter = 'all' | 'with' | 'without';
 const hasContact = (p: Partner) => p.phones.length > 0 || p.emails.length > 0;
 
-// Companies that keep posting openings for the courses: who to approach for hiring partnerships.
+// Companies that keep posting openings for the courses: who to approach for hiring partnerships. A
+// company's row opens its openings right under it (CompanyJobs), with a pill per course.
 export default function Partners() {
   const meta = useApi<Meta>('meta');
   const state = useApi<PartnersResponse>('partners');
@@ -20,6 +22,7 @@ export default function Partners() {
   const [search, setSearch] = useState('');
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
   const [showAll, setShowAll] = useState(false);
+  const [open, setOpen] = useState<string | null>(null); // the company whose openings are shown
 
   if (state.error || meta.error) return <PageError title="Could not load hiring partners" error={state.error ?? meta.error} />;
   if (!state.data || !meta.data) return <PageSkeleton />;
@@ -35,6 +38,12 @@ export default function Partners() {
     .filter((p) => contactFilter === 'all' || (contactFilter === 'with') === hasContact(p))
     .filter((p) => !query || p.name.toLowerCase().includes(query));
   const rows = showAll || query ? matches : matches.slice(0, SHOWN);
+  const toggle = (key: string) => setOpen((current) => (current === key ? null : key));
+  // A click anywhere on a row opens it, except on its links and buttons (a phone number, an email).
+  const onRow = (event: MouseEvent, key: string) => {
+    if ((event.target as Element).closest('a, button')) return;
+    toggle(key);
+  };
   const pickFilter = (value: ContactFilter) => {
     setContactFilter(value);
     setShowAll(false);
@@ -97,7 +106,7 @@ export default function Partners() {
               Companies <span className="count-badge">{formatNumber(matches.length)}</span>
             </>
           }
-          description="Most openings first. The same company spelled differently on different sites counts once."
+          description="Most openings first. The same company spelled differently on different sites counts once. Click a company to see its openings."
           actions={
             <a className="btn" href={apiUrl('partners.csv')}>
               <DownloadIcon /> Download CSV
@@ -120,7 +129,7 @@ export default function Partners() {
             ]}
           />
         </div>
-        <div className="table-wrap">
+        <div className="table-wrap partners-wrap">
           <table className="data-table partners-table">
             <thead>
               <tr>
@@ -134,49 +143,69 @@ export default function Partners() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((p) => (
-                <tr key={p.name}>
-                  <th scope="row" className="job-cell">
-                    <span className="job-title">{p.name}</span>
-                    <span className="job-sub">{p.cities.length ? p.cities.join(', ') : 'City not shown'}</span>
-                  </th>
-                  <td className="num">
-                    <span className="cell-bar">
-                      <span className="cell-bar-track" aria-hidden="true">
-                        <span className="cell-bar-fill" style={{ width: `${(p.openings / maxOpenings) * 100}%` }} />
-                      </span>
-                      <span className="big-num">{formatNumber(p.openings)}</span>
-                    </span>
-                  </td>
-                  <td>
-                    <ul className="course-counts">
-                      {courses
-                        .filter((c) => p.courses[c.id])
-                        .map((c) => (
-                          <li key={c.id} style={{ '--course': COURSE_COLORS[c.id as CourseId] } as CSSProperties}>
-                            <span className="dot" aria-hidden="true" />
-                            {c.name}
-                            <span className="muted">{p.courses[c.id]}</span>
-                          </li>
+              {rows.map((p, index) => {
+                const isOpen = Boolean(p.key) && open === p.key;
+                const panelId = `partner-jobs-${index}`;
+                return (
+                  <Fragment key={p.key ?? p.name}>
+                    <tr className={`partner-row ${p.key ? 'can-open' : ''} ${isOpen ? 'is-open' : ''}`} onClick={p.key ? (e) => onRow(e, p.key) : undefined}>
+                      <th scope="row" className="job-cell">
+                        {p.key ? (
+                          <button type="button" className="partner-toggle" aria-expanded={isOpen} aria-controls={isOpen ? panelId : undefined} onClick={() => toggle(p.key)}>
+                            <ChevronRightIcon size={16} className="partner-chevron" />
+                            <span className="job-title">{p.name}</span>
+                          </button>
+                        ) : (
+                          <span className="job-title">{p.name}</span>
+                        )}
+                        <span className="job-sub">{p.cities.length ? p.cities.join(', ') : 'City not shown'}</span>
+                      </th>
+                      <td className="num">
+                        <span className="cell-bar">
+                          <span className="cell-bar-track" aria-hidden="true">
+                            <span className="cell-bar-fill" style={{ width: `${(p.openings / maxOpenings) * 100}%` }} />
+                          </span>
+                          <span className="big-num">{formatNumber(p.openings)}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <ul className="course-counts">
+                          {courses
+                            .filter((c) => p.courses[c.id])
+                            .map((c) => (
+                              <li key={c.id} style={{ '--course': COURSE_COLORS[c.id as CourseId] } as CSSProperties}>
+                                <span className="dot" aria-hidden="true" />
+                                {c.name}
+                                <span className="muted">{p.courses[c.id]}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      </td>
+                      <td className="nowrap muted">{formatDate(p.lastPosted)}</td>
+                      <td className="contact-cell email">
+                        {p.phones.map((phone) => (
+                          <a key={phone} className="contact-value" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
+                            {phone}
+                          </a>
                         ))}
-                    </ul>
-                  </td>
-                  <td className="nowrap muted">{formatDate(p.lastPosted)}</td>
-                  <td className="contact-cell email">
-                    {p.phones.map((phone) => (
-                      <a key={phone} className="contact-value" href={`tel:${phone.replace(/[^\d+]/g, '')}`}>
-                        {phone}
-                      </a>
-                    ))}
-                    {p.emails.map((email) => (
-                      <a key={email} className="contact-value" href={`mailto:${email}`}>
-                        {email}
-                      </a>
-                    ))}
-                    {!hasContact(p) && <span className="badge-muted">No contact yet</span>}
-                  </td>
-                </tr>
-              ))}
+                        {p.emails.map((email) => (
+                          <a key={email} className="contact-value" href={`mailto:${email}`}>
+                            {email}
+                          </a>
+                        ))}
+                        {!hasContact(p) && <span className="badge-muted">No contact yet</span>}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="partner-detail" id={panelId}>
+                        <td colSpan={5}>
+                          <CompanyJobs companyKey={p.key} courses={courses} days={data.days} label={p.name} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
           {!query && matches.length > SHOWN && (

@@ -12,7 +12,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'IJF Job Tracker',
+  title: 'IJF HR Database',
   description: 'New job openings in India for Data Analyst, Data Science, Data Engineering and Production Support roles',
 };
 
@@ -37,7 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </AuthGate>
         <footer className="app-footer">
           <div className="app-footer-inner">
-            <span className="app-footer-brand">IJF Job Tracker</span>
+            <span className="app-footer-brand">IJF HR Database</span>
             <span>Job openings from LinkedIn, Naukri, Indeed and Glassdoor · updated every day</span>
           </div>
         </footer>

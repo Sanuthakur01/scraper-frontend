@@ -145,18 +145,18 @@ export default function Insights({
   return (
     <div className={`grid-3 ${state.loading ? 'is-loading' : ''}`}>
       <section className="card">
-        <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings in this period · click one to see its jobs" />
+        <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings in this period" />
         <RankList items={data?.companies ?? []} onSelect={(item) => onSelect({ company: item.name }, `Jobs at ${item.name}`)} />
       </section>
       <section className="card">
-        <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where the openings are · click one to see its jobs" />
+        <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where the new openings are" />
         <RankList
           items={data?.cities ?? []}
           onSelect={(item) => onSelect({ city: item.name }, item.name === 'Remote' ? 'Remote jobs' : `Jobs in ${item.name}`)}
         />
       </section>
       <section className="card card-grow">
-        <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post (5+ = more than 5) · click a column" />
+        <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post" />
         <ExperienceColumns
           items={data?.total ? experience : []}
           onSelect={(item) => onSelect({ exp: item.id }, `Jobs asking for ${item.name} of experience`)}

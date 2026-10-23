@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 // Which jobs the whole dashboard shows: the kept ones ('filtered', the default) or the ones the keep
 // rules leave out ('nonfiltered': large IT services firms, under the minimum experience, experience not
-// stated). Every API call adds ?view=nonfiltered for the second (see useApi), so every page switches.
+// stated, or from the extra searches). Every API call adds ?view=nonfiltered for the second (see
+// useApi), so every page switches.
 export type DataView = 'filtered' | 'nonfiltered';
 
 interface DataViewState {

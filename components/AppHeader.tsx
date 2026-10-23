@@ -25,12 +25,12 @@ export default function AppHeader() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link href="/" className="brand" aria-label="IJF Job Tracker: dashboard">
+        <Link href="/" className="brand" aria-label="IJF HR Database: dashboard">
           <span className="brand-mark" aria-hidden="true">
             IJF
           </span>
           <span className="brand-text">
-            <span className="brand-name">Job Tracker</span>
+            <span className="brand-name">HR Database</span>
             <span className="brand-tag">India hiring insights</span>
           </span>
         </Link>

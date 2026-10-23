@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder } from '@/lib/format';
 import type { Job } from '@/lib/types';
-import ContactCell, { CONTACT_COLUMNS } from './ContactCell';
+import ContactCell, { CONTACT_COLUMNS, PROFILE_COLUMN } from './ContactCell';
 import { contactSummary, ContactIcons, type FieldKey } from './ContactForm';
 import { ExternalIcon } from './Icons';
 
@@ -45,7 +45,7 @@ function Skills({ skills, jobTitle }: { skills: string[]; jobTitle: string }) {
 interface Props {
   job: Job;
   courseName?: string; // shown under the title when the list has several courses
-  expanded: boolean; // also show salary, skills, work mode and when we found it
+  expanded: boolean; // also show salary, skills, work mode, when we found it and HR profile links
   onOpen: (job: Job) => void; // the company name was clicked: open the job's details window
   mayEdit: boolean; // the signed-in person's role may edit HR details
   editing: FieldKey | null; // the HR column being edited in this row, if any
@@ -59,6 +59,18 @@ interface Props {
 export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, editing, onEdit, onSaved }: Props) {
   const summary = contactSummary(job.contact);
   const company = job.company || 'Company not shown';
+  const cell = (field: FieldKey) => (
+    <ContactCell
+      key={field}
+      job={job}
+      field={field}
+      mayEdit={mayEdit}
+      editing={editing === field}
+      onEdit={() => onEdit(field)}
+      onClose={() => onEdit(null)}
+      onSaved={onSaved}
+    />
+  );
 
   return (
     <tr>
@@ -115,18 +127,7 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
       </td>
       <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
 
-      {CONTACT_COLUMNS.map(({ field }) => (
-        <ContactCell
-          key={field}
-          job={job}
-          field={field}
-          mayEdit={mayEdit}
-          editing={editing === field}
-          onEdit={() => onEdit(field)}
-          onClose={() => onEdit(null)}
-          onSaved={onSaved}
-        />
-      ))}
+      {CONTACT_COLUMNS.map(({ field }) => cell(field))}
 
       {expanded && (
         <>
@@ -136,6 +137,7 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           </td>
           <td className="nowrap">{job.isRemote ? 'Remote' : 'On-site'}</td>
           <td className="nowrap muted">{formatDate(job.firstSeenAt)}</td>
+          {cell(PROFILE_COLUMN.field)}
         </>
       )}
     </tr>

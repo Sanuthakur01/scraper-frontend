@@ -165,10 +165,12 @@ export interface Job {
   leftOutBy?: LeftOutReason; // Non-filtered jobs only: why our filters leave it out
 }
 
-export type LeftOutReason = 'big-company' | 'experience' | 'no-experience';
+// extra-search: passes the keep rules, but it came from the extra searches (server config/courses.js).
+export type LeftOutReason = 'big-company' | 'experience' | 'no-experience' | 'extra-search';
 
 // GET /api/partners: employers with several openings in the last 90 days.
 export interface Partner {
+  key: string; // which jobs are this company's (companies/jobs?key=)
   name: string;
   openings: number;
   courses: Partial<Record<CourseId, number>>;
@@ -186,6 +188,44 @@ export interface PartnersResponse {
   jobs: number;
   partners: Partner[];
   lastRefreshed: string | null;
+}
+
+// One company's openings (companies/jobs): every spelling of its name, newest first. days: only those
+// found in the last N days (null: every stored job). total can be more than the items sent.
+export interface CompanyJobsResponse {
+  key: string;
+  name: string;
+  days: number | null;
+  total: number;
+  items: Job[];
+}
+
+// The search box (search?q=): companies whose name matches, and jobs with a matching HR name, email or
+// phone number, kept and left-out alike. kind: 'phone' (digits were typed), 'text', or 'short' (too little).
+export type SearchField = 'phone' | 'email' | 'hrName';
+
+export interface SearchCompany {
+  key: string;
+  name: string;
+  openings: number; // kept jobs
+  leftOut: number; // jobs the keep rules leave out
+  courses: Partial<Record<CourseId, number>>;
+  lastPosted: string | null;
+}
+
+export interface SearchContact {
+  job: Job;
+  set: 'filtered' | 'nonfiltered';
+  matches: { field: SearchField; value: string }[];
+}
+
+export interface SearchResponse {
+  q: string;
+  kind: 'short' | 'phone' | 'text';
+  companies: SearchCompany[];
+  moreCompanies: number;
+  contacts: SearchContact[];
+  moreContacts: boolean;
 }
 
 // Where a phone or email shown for a job came from: typed in on the dashboard, or written in the

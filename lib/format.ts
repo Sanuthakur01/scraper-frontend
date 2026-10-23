@@ -118,6 +118,7 @@ export const LEFT_OUT_LABELS: Record<LeftOutReason, string> = {
   'big-company': 'Large IT services firm',
   experience: 'Too little experience',
   'no-experience': 'Experience not stated',
+  'extra-search': 'Extra search',
 };
 
 export const COURSE_IDS = Object.keys(COURSE_COLORS) as CourseId[];

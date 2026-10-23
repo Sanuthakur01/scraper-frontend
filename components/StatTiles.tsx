@@ -65,7 +65,10 @@ export default function StatTiles({ courses, state, period }: Props) {
               </span>
               <span className="kpi-name">{course.name}</span>
             </div>
-            <p className="kpi-value">{shown(count)}</p>
+            <div className="kpi-value-row">
+              <p className="kpi-value">{shown(count)}</p>
+              <ArrowRightIcon size={18} className="kpi-go" />
+            </div>
             <div className="kpi-share">
               <span className="kpi-share-track" aria-hidden="true">
                 <span style={{ width: total ? `${(count / total) * 100}%` : 0 }} />
@@ -73,9 +76,6 @@ export default function StatTiles({ courses, state, period }: Props) {
               {percent(count, total)} of all
             </div>
             <Delta current={count} previous={previous[course.id] ?? 0} label={period.previous} quiet />
-            <span className="kpi-cta" aria-hidden="true">
-              View jobs <ArrowRightIcon size={14} />
-            </span>
           </Link>
         );
       })}

@@ -6,14 +6,7 @@ import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
 import { ExternalIcon, SparklesIcon } from './Icons';
 import { RankList } from './Insights';
-import { CardHeader, HowSteps, Segmented } from './PageParts';
-
-// How to use the planner, in three steps shown at the top of the card.
-const HOW_TO = [
-  { title: 'Pick a course', text: 'with the course buttons above' },
-  { title: 'Choose skills to add', text: 'take the suggested order, or tap skills for your own mix' },
-  { title: 'See the jobs it unlocks', text: 'how many more job posts students could apply for, with links' },
-];
+import { CardHeader, Segmented } from './PageParts';
 
 const PILLS = 14; // skills offered to try
 const JOBS_SHOWN = 25; // jobs listed before "Show all"
@@ -70,7 +63,7 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
         level={3}
         icon={<SparklesIcon />}
         title="Skill planner"
-        description="Which skills to add to a course, and how many more job posts students could then apply for."
+        description="Skills to add to a course, and how many more jobs students could then apply for"
         actions={
           <Segmented
             label="Course"
@@ -89,12 +82,10 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
         }
       />
 
-      <HowSteps label="How to use the skill planner" steps={HOW_TO} />
-
       <div className={`skills-layout ${loading || gaps.loading ? 'is-loading' : ''}`} style={{ '--course': color } as CSSProperties}>
         <div className="skills-col">
           <h4 className="subhead">Most requested skills</h4>
-          <p className="subhead-note">Job posts naming each skill · click one to see them</p>
+          <p className="subhead-note">Job posts naming each skill</p>
           <RankList
             items={requested?.[courseId] ?? []}
             color={color}

@@ -118,25 +118,6 @@ export function Freshness({ lastRun, scheduleLabel }: { lastRun: LastRun | null;
   );
 }
 
-// How to use a feature, as numbered steps in a row: a bold title and a few words each.
-export function HowSteps({ label, steps }: { label: string; steps: { title: string; text: string }[] }) {
-  return (
-    <ol className="how-steps" aria-label={label}>
-      {steps.map((step, i) => (
-        <li key={step.title}>
-          <span className="how-num" aria-hidden="true">
-            {i + 1}
-          </span>
-          <span className="how-text">
-            <strong>{step.title}</strong>
-            <span>{step.text}</span>
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 // Two to four options, one selected (period, course, chart or table).
 export function Segmented<T extends string | number>({
   options,

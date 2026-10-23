@@ -6,6 +6,7 @@ import { useApi } from '@/lib/api';
 import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/lib/format';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { InsightsResponse, Meta, PlatformsResponse, Summary, TrendsResponse } from '@/lib/types';
+import GlobalSearch from './GlobalSearch';
 import { DashboardIcon, LayersIcon, TrendIcon } from './Icons';
 import Insights from './Insights';
 import JobsDrawer, { type JobsView } from './JobsDrawer';
@@ -97,7 +98,6 @@ export default function Dashboard() {
         icon={<DashboardIcon size={20} />}
         eyebrow={`India job market${period.from ? ` · ${period.label}` : anchor ? ` · ${formatDay(anchor)}` : ''}`}
         title="Job market overview"
-        subtitle={`New openings for your ${courses.length} courses, collected every day from ${meta.data.platforms.join(', ')}.`}
         actions={
           <PeriodTabs
             period={period}
@@ -110,16 +110,18 @@ export default function Dashboard() {
         <Freshness lastRun={lastRun} scheduleLabel={scheduleLabel} />
       </PageHeader>
 
+      <GlobalSearch courses={courses} />
+
       <StatTiles courses={courses} state={summary} period={period} />
 
-      <PageSection title="Market activity" description="Which sites the new jobs come from, and how many appear each day">
+      <PageSection title="Market activity">
         <div className="grid-2">
           <section className="card card-stretch">
             <CardHeader
               level={3}
               icon={<LayersIcon />}
               title="Where the jobs come from"
-              description="Each job counted once, on the site where it was posted first · click a bar to see its jobs"
+              description="Each job counted once, on the site that posted it first"
               actions={
                 <Segmented
                   label="Show as"
@@ -141,17 +143,17 @@ export default function Dashboard() {
           </section>
 
           <section className="card">
-            <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="The last 30 days, per course · click a day to see its jobs" />
+            <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="Last 30 days, per course" />
             <TrendChart courses={courses} state={trends} onSelectDay={(day) => showJobs({ day }, `Jobs found on ${formatDay(day)}`)} />
           </section>
         </div>
       </PageSection>
 
-      <PageSection title="Who is hiring" description="Companies, cities and experience levels in this period's new jobs">
+      <PageSection title="Who is hiring">
         <Insights state={insights} experienceRange={meta.data.filters.experience} onSelect={showJobs} />
       </PageSection>
 
-      <PageSection title="Skills and curriculum" description="What employers ask for, and how many more jobs students could apply for if a course added a skill">
+      <PageSection title="Skills and curriculum">
         <SkillsPanel
           courses={courses}
           period={period}
