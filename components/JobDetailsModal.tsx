@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError, sendJson, useApi } from '@/lib/api';
+import { usePressAction } from '@/lib/pressAction';
 import { useAccess } from './AuthGate';
 import {
   COURSE_COLORS,
@@ -289,6 +290,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<{ message: string; detail: string } | null>(null); // not about one field
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false); // set at once (state shows on the next render): never two saves at a time
   const [justSaved, setJustSaved] = useState(false);
   const [focusOn, setFocusOn] = useState<string | null>(null); // the box (data-entry) to put the cursor in next
 
@@ -368,7 +370,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   };
 
   const save = async () => {
-    if (!draft || saving || !changed) return;
+    if (!draft || savingNow.current || !changed) return;
     const found = validateDraft(draft);
     if (FIELD_ORDER.some((key) => found[key])) {
       setErrors(found);
@@ -376,6 +378,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
       focusField(found);
       return;
     }
+    savingNow.current = true;
     setSaving(true);
     setErrors({});
     setFailure(null);
@@ -395,9 +398,12 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
         setFailure({ message, detail });
       }
     } finally {
+      savingNow.current = false;
       setSaving(false);
     }
   };
+  // Saves on the press, so one click always does it (lib/pressAction.ts).
+  const savePress = usePressAction(save);
 
   const remarksLength = draft ? draft.remarks.replace(/\r\n?/g, '\n').trim().length : 0;
 
@@ -747,7 +753,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                 <button type="button" className="btn" onClick={stopEditing} disabled={saving}>
                   <CloseIcon size={15} /> Cancel
                 </button>
-                <button type="button" className="btn btn-primary" onClick={save} disabled={saving || !changed} aria-label={saving ? 'Saving' : 'Save'}>
+                <button type="button" className="btn btn-primary" {...savePress} disabled={saving || !changed} aria-label={saving ? 'Saving' : 'Save'}>
                   {saving ? <span className="spinner" aria-hidden="true" /> : <CheckIcon size={15} />}
                   {saving ? 'Saving…' : 'Save'}
                 </button>

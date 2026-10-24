@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ApiError, sendJson } from '@/lib/api';
 import { formatNumber } from '@/lib/format';
+import { usePressAction } from '@/lib/pressAction';
 import type { Job } from '@/lib/types';
 import { draftFrom, errorFromServer, LISTS, profileLabel, REMARKS_LIMIT, splitList, validateDraft, type FieldError, type FieldKey } from './ContactForm';
 import { CheckIcon, CloseIcon, ExternalIcon, LinkIcon, MailIcon, NoteIcon, PencilIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
@@ -11,7 +12,8 @@ import { CheckIcon, CloseIcon, ExternalIcon, LinkIcon, MailIcon, NoteIcon, Penci
 // emails) so the list fits the window; the others hold one (students, notes, HR profile links). It shows
 // what the job has, one value per line (phone numbers and emails can be clicked to call or write). Only
 // the pencil beside them opens the editor, right there: a box per field (one value per line) with ✓ Save
-// and ✕ Cancel. Only ✓ (or Ctrl+Enter) saves; Esc, ✕ or a click outside the cell puts it back as it was.
+// and ✕ Cancel. Only ✓ (or Ctrl+Enter) saves, on the press itself (usePressAction), so one click always
+// does it; Esc, ✕ or a click outside the cell puts it back as it was.
 // The server checks it like the details window does (PUT follow-up).
 
 export interface ContactColumn {
@@ -115,6 +117,7 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
   const [errors, setErrors] = useState<Partial<Record<FieldKey, FieldError>>>({});
   const [failure, setFailure] = useState<FieldError | null>(null); // a refusal that isn't about one of these fields
   const [saving, setSaving] = useState(false);
+  const savingNow = useRef(false); // set at once (state shows on the next render): never two saves at a time
   const [justSaved, setJustSaved] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const cell = useRef<HTMLTableCellElement>(null);
@@ -167,7 +170,7 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
   };
 
   const save = async () => {
-    if (saving || !changed) return;
+    if (savingNow.current || !changed) return;
     // Everything else as saved, these fields as typed (one value per line).
     const draft = draftFrom(job.contact);
     for (const field of fields) {
@@ -181,6 +184,7 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
       focusBox(fields.find((field) => problems[field]));
       return;
     }
+    savingNow.current = true;
     setSaving(true);
     setErrors({});
     setFailure(null);
@@ -202,9 +206,11 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
         focusBox(fields[0]);
       }
     } finally {
+      savingNow.current = false;
       setSaving(false);
     }
   };
+  const savePress = usePressAction(save);
 
   const fromPost = (field: FieldKey) =>
     (field === 'phone' && job.contact.phoneSource === 'posting') || (field === 'email' && job.contact.emailSource === 'posting');
@@ -283,8 +289,8 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
             <button type="button" className="btn btn-sm" onClick={cancel} disabled={saving}>
               <CloseIcon size={13} /> Cancel
             </button>
-            <button type="button" className="btn btn-sm btn-primary" onClick={save} disabled={saving || !changed} title="Save (Ctrl+Enter)">
-              {saving ? <span className="spinner" aria-hidden="true" /> : <CheckIcon size={13} />} Save
+            <button type="button" className="btn btn-sm btn-primary" {...savePress} disabled={saving || !changed} title="Save (Ctrl+Enter)">
+              {saving ? <span className="spinner" aria-hidden="true" /> : <CheckIcon size={13} />} {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
