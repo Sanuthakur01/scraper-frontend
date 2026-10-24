@@ -190,6 +190,24 @@ export interface PartnersResponse {
   lastRefreshed: string | null;
 }
 
+// One role's openings (role-jobs?role=sre): the period's jobs with that role's titles in the view's set
+// (Filtered, or Non-filtered with each one's leftOutBy), newest first, a page at a time; total is the
+// view's, filtered and nonFiltered both sets'.
+export interface RoleJobsResponse {
+  role: { id: string; name: string };
+  view: 'filtered' | 'nonfiltered';
+  days: number;
+  from: string;
+  to: string;
+  total: number;
+  filtered: number;
+  nonFiltered: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+  items: Job[];
+}
+
 // One company's openings (companies/jobs): every spelling of its name, newest first. days: only those
 // found in the last N days (null: every stored job). total can be more than the items sent.
 export interface CompanyJobsResponse {

@@ -737,11 +737,72 @@ optgroup {
 }
 
 .page-header {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px 24px;
+}
+
+/* "SRE Openings": top right of every page, lined up under the Filtered / Non-filtered switch (the top
+   bar's inner padding and border, from the page's right edge) */
+.page-header > .quick-link {
+  position: absolute;
+  top: -10px;
+  right: calc(var(--space-3) + 1px);
+}
+
+.quick-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.quick-link svg {
+  color: var(--accent-text);
+}
+
+.quick-link:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  text-decoration: none;
+}
+
+.quick-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.quick-link[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.quick-link[aria-current='page'] svg {
+  color: #fff;
+}
+
+/* Phones: on its own line above the title, still at the right */
+@media (max-width: 640px) {
+  .page-header > .quick-link {
+    position: static;
+    order: -1;
+    margin-left: auto;
+  }
 }
 
 .page-heading {
@@ -6858,6 +6919,45 @@ html:has(.job-modal[open]) {
 
 .gs-option[aria-selected='true'] .gs-go {
   opacity: 1;
+}
+
+/* ---------- One role's openings on the dashboard: "SRE Openings" (RoleOpenings) ---------- */
+
+/* "+3 in Non-filtered →": the other set's count; one click shows it (the same as the switch at the top) */
+.role-other {
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.role-other:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.role-other:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.role-table .reason-pill {
+  margin-top: 4px;
+}
+
+.role-openings .table-wrap {
+  max-height: 560px; /* 25 jobs scroll inside the box; the pager stays under it */
+  overflow-y: auto;
+}
+
+.role-openings .role-loading {
+  padding: 0 24px 20px;
 }
 
 /* ---------- One company's openings with a pill per course (CompanyJobs) ---------- */

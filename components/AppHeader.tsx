@@ -2,18 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { useAccess, UserMenu } from './AuthGate';
 import DataViewToggle from './DataViewToggle';
-import { ChartIcon, DashboardIcon, HistoryIcon, UsersIcon } from './Icons';
 import ThemeToggle from './ThemeToggle';
 
-// short: the label on phones, where the three full labels don't fit in one row.
-const PAGES: { href: string; label: string; short: string; icon: ReactNode; matches: (path: string) => boolean }[] = [
-  { href: '/', label: 'Dashboard', short: 'Dashboard', icon: <DashboardIcon />, matches: (path) => path === '/' || path.startsWith('/course') },
-  { href: '/performance', label: 'Performance report', short: 'Performance', icon: <ChartIcon />, matches: (path) => path.startsWith('/performance') },
-  { href: '/partners', label: 'Hiring partners', short: 'Partners', icon: <UsersIcon />, matches: (path) => path.startsWith('/partners') },
-  { href: '/activity', label: 'Activity', short: 'Activity', icon: <HistoryIcon />, matches: (path) => path.startsWith('/activity') },
+// short: the label on narrower screens and phones, where the full labels don't fit in one row. The tabs
+// are words only: with icons too, a longer role badge ("Research team") pushed "Activity" out of the bar.
+const PAGES: { href: string; label: string; short: string; matches: (path: string) => boolean }[] = [
+  { href: '/', label: 'Dashboard', short: 'Dashboard', matches: (path) => path === '/' || path.startsWith('/course') },
+  { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
+  { href: '/partners', label: 'Hiring partners', short: 'Partners', matches: (path) => path.startsWith('/partners') },
+  { href: '/activity', label: 'Activity', short: 'Activity', matches: (path) => path.startsWith('/activity') },
 ];
 
 // The bar across the top of every page: the product name, the four main pages, light/dark, the
@@ -37,9 +36,6 @@ export default function AppHeader() {
         <nav className="app-nav" aria-label="Pages">
           {PAGES.map((page) => (
             <Link key={page.href} href={page.href} aria-current={page.matches(path) ? 'page' : undefined}>
-              <span className="nav-icon" aria-hidden="true">
-                {page.icon}
-              </span>
               <span className="label-long">{page.label}</span>
               <span className="label-short">{page.short}</span>
             </Link>
