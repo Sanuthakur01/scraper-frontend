@@ -5,6 +5,7 @@ import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
 import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
+import { SectionError } from './PageParts';
 
 // What was clicked on the dashboard: a heading for the panel, and the job list filters behind it.
 export interface JobsView {
@@ -73,7 +74,7 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
         </header>
 
         <div className="drawer-body" ref={body}>
-          {jobs.error && <p className="empty">Could not load jobs: {jobs.error.message}</p>}
+          {jobs.error && <SectionError what="the jobs" error={jobs.error} onRetry={jobs.reload} />}
           {data && data.total === 0 && <p className="empty">No jobs.</p>}
           <ul className={`drawer-list ${jobs.loading ? 'is-loading' : ''}`}>
             {data?.items.map((loaded) => {

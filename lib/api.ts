@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDataView, viewParam, type DataView } from './dataView';
 import { signInHeader } from './session';
 import type { ApiState } from './types';
@@ -55,11 +55,14 @@ export function useApiUrl() {
 // ?view=nonfiltered). Keeps the previous data while reloading so the page doesn't jump, except after a
 // switch: then the old data goes at once, so one set's numbers never show under the other's name.
 // skip: don't fetch (yet), e.g. when a value the request needs is missing. auth: send the person's
-// sign-in (for data only signed-in people may read, e.g. the activity record).
+// sign-in (for data only signed-in people may read, e.g. the activity record). reload() fetches again,
+// for "Try again" after an error (with a fresh sign-in token).
 export function useApi<T>(path: string, params?: QueryParams, { skip = false, auth = false }: { skip?: boolean; auth?: boolean } = {}): ApiState<T> {
   const { view, ready } = useDataView();
   const url = apiUrl(path, { ...params, ...viewParam(view) });
   const [state, setState] = useState<ApiState<T> & { view?: DataView }>({ data: null, error: null, loading: true });
+  const [attempt, setAttempt] = useState(0);
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (!ready || skip) return; // the remembered view isn't known yet, or nothing to fetch
@@ -81,7 +84,7 @@ export function useApi<T>(path: string, params?: QueryParams, { skip = false, au
     return () => {
       cancelled = true;
     };
-  }, [url, path, ready, view, skip, auth]);
+  }, [url, path, ready, view, skip, auth, attempt]);
 
-  return skip ? { data: null, error: null, loading: false } : state;
+  return skip ? { data: null, error: null, loading: false, reload } : { ...state, reload };
 }

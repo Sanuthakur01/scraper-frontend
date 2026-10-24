@@ -10,6 +10,7 @@ import { signInHeader } from '@/lib/session';
 import type { ChatAction, ChatCard, ChatMessage, ChatReminder, ChatSummary, ChatUsage, Course, Job, JobsResponse, Meta } from '@/lib/types';
 import { useAccess } from './AuthGate';
 import ChatMarkdown from './ChatMarkdown';
+import { SectionError } from './PageParts';
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -278,8 +279,8 @@ export default function AiChat() {
     <>
       {!open && (
         <button ref={opener} type="button" className="ai-fab" onClick={() => setOpen(true)} title="Ask IJF AI (Ctrl+K)" aria-haspopup="dialog">
-          <SparklesIcon size={17} />
-          <span>Ask IJF AI</span>
+          <SparklesIcon size={18} />
+          <span className="ai-fab-label">Ask IJF AI</span>
         </button>
       )}
 
@@ -321,7 +322,7 @@ export default function AiChat() {
             ) : screen === 'usage' ? (
               <Usage usage={usage} />
             ) : messages.length === 0 ? (
-              <Welcome path={path} briefing={briefing} reminders={reminders} onAsk={send} onLink={go} />
+              <Welcome path={path} briefing={briefing} reminders={reminders} onAsk={send} onLink={go} onRetryBriefing={() => setBriefing(null)} />
             ) : (
               <div className="ai-messages">
                 {messages.map((m, i) =>
@@ -437,12 +438,14 @@ function Welcome({
   reminders,
   onAsk,
   onLink,
+  onRetryBriefing,
 }: {
   path: string;
   briefing: { text?: string; writing?: boolean; error?: string } | null;
   reminders: ChatReminder[] | null;
   onAsk: (q: string) => void;
   onLink: (href: string) => void;
+  onRetryBriefing: () => void; // asks for the briefing again
 }) {
   return (
     <div className="ai-welcome">
@@ -453,7 +456,7 @@ function Welcome({
         {briefing?.text ? (
           <ChatMarkdown text={briefing.text} onLink={onLink} />
         ) : briefing?.error ? (
-          <p className="muted">{briefing.error}</p>
+          <SectionError what="today's briefing" error={new Error(briefing.error)} onRetry={onRetryBriefing} />
         ) : (
           <div className="ai-skeleton" aria-busy="true" aria-label="Writing today's briefing">
             <span className="skeleton" />

@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, periodQuery, sumCounts, type Period } from '@/lib/format';
 import type { ApiState, Course, Summary } from '@/lib/types';
 import { ArrowRightIcon, TrendIcon } from './Icons';
+import { SectionError } from './PageParts';
 
 // "▲ 12%" in a green (up) or red (down) badge, then "vs previous 7 days".
 // quiet: say nothing (instead of "no earlier data") when there is nothing to compare with.
@@ -25,11 +26,13 @@ interface Props {
   courses: Course[];
   state: ApiState<Summary>;
   period: Period;
+  onShowAll: () => void; // "All courses" was clicked: show every new job of the period
 }
 
-// The headline numbers: all courses together, then one colour-coded card per course (its share of
-// all new jobs, the change vs the previous period when it can be compared) that opens its page.
-export default function StatTiles({ courses, state, period }: Props) {
+// The headline numbers: all courses together (it shows those jobs in the side panel), then one
+// colour-coded card per course (its share of all new jobs, the change vs the previous period when it
+// can be compared) that opens its page.
+export default function StatTiles({ courses, state, period, onShowAll }: Props) {
   const current = state.data?.current ?? {};
   // Until the numbers arrive (first load, or after the Filtered / Non-filtered switch): a dash, never 0.
   const shown = (n: number) => (state.data ? formatNumber(n) : '—');
@@ -38,17 +41,27 @@ export default function StatTiles({ courses, state, period }: Props) {
 
   return (
     <section className={`kpis ${state.loading ? 'is-loading' : ''}`} aria-label="New jobs per course">
-      <div className="kpi kpi-total">
-        <div className="kpi-top">
+      {state.error && <SectionError what="the numbers" error={state.error} onRetry={state.reload} />}
+      <button
+        type="button"
+        className="kpi kpi-total"
+        onClick={onShowAll}
+        disabled={!state.data}
+        aria-label={`All courses: ${shown(total)} new jobs, ${period.title.toLowerCase()}. Show them`}
+      >
+        <span className="kpi-top">
           <span className="kpi-badge" aria-hidden="true">
             <TrendIcon size={16} />
           </span>
           <span className="kpi-name">All courses</span>
-        </div>
-        <p className="kpi-value">{shown(total)}</p>
-        <p className="kpi-period">{period.title}</p>
+          <span className="kpi-go" aria-hidden="true">
+            <ArrowRightIcon size={16} />
+          </span>
+        </span>
+        <span className="kpi-value">{shown(total)}</span>
+        <span className="kpi-period">{period.title}</span>
         <Delta current={total} previous={sumCounts(previous)} label={period.previous} />
-      </div>
+      </button>
       {courses.map((course) => {
         const count = current[course.id] ?? 0;
         return (
@@ -64,11 +77,11 @@ export default function StatTiles({ courses, state, period }: Props) {
                 {courseInitials(course.name)}
               </span>
               <span className="kpi-name">{course.name}</span>
+              <span className="kpi-go" aria-hidden="true">
+                <ArrowRightIcon size={16} />
+              </span>
             </div>
-            <div className="kpi-value-row">
-              <p className="kpi-value">{shown(count)}</p>
-              <ArrowRightIcon size={18} className="kpi-go" />
-            </div>
+            <p className="kpi-value">{shown(count)}</p>
             <div className="kpi-share">
               <span className="kpi-share-track" aria-hidden="true">
                 <span style={{ width: total ? `${(count / total) * 100}%` : 0 }} />

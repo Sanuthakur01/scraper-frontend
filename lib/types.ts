@@ -273,6 +273,7 @@ export interface ApiState<T> {
   data: T | null;
   error: Error | null;
   loading: boolean;
+  reload?: () => void; // fetch again (Try again after an error); from useApi
 }
 
 // GET /api/activity: who changed which job's HR details, and what changed (server/src/activity.js).

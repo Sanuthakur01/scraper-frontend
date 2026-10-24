@@ -50,6 +50,7 @@ import {
   UserIcon,
   UsersIcon,
 } from './Icons';
+import { SectionError } from './PageParts';
 
 // The icon beside each list of boxes while editing.
 const LIST_ICONS: Record<ListKey, ReactNode> = {
@@ -179,7 +180,7 @@ function CompanyOpenings({
 
   let content: ReactNode;
   if (!company) content = <p className="modal-empty">The job post doesn&apos;t name the company.</p>;
-  else if (state.error) content = <p className="modal-empty">Could not load the company&apos;s other openings: {state.error.message}</p>;
+  else if (state.error) content = <SectionError what="the company's other openings" error={state.error} onRetry={state.reload} />;
   else if (!state.data)
     content = (
       <div className="opening-skeleton" aria-busy="true" aria-label="Loading other openings">

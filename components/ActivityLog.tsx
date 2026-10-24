@@ -8,7 +8,7 @@ import { signInHeader } from '@/lib/session';
 import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
 import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
-import { CardHeader, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
+import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 
 const PAGE = 30; // changes loaded at a time
 
@@ -236,7 +236,6 @@ export default function ActivityLog() {
   return (
     <main className="page">
       <PageHeader
-        icon={<HistoryIcon size={20} />}
         eyebrow="Team"
         title="Activity"
         subtitle="Who added, changed or removed HR phone numbers, emails, students and notes, on which job, and when. Newest first."
@@ -250,7 +249,7 @@ export default function ActivityLog() {
               Changes {data?.total != null && <span className="count-badge">{formatNumber(data.total)}</span>}
             </>
           }
-          description="Each change is recorded under the email of the person who made it, from their sign-in. Click a job to open it."
+          description="Each change is recorded under the email of the person who made it."
         />
         <div className="toolbar">
           <label className="search">
@@ -297,9 +296,7 @@ export default function ActivityLog() {
         </div>
 
         {first.error ? (
-          <p className="activity-empty" role="alert">
-            {first.error.message}
-          </p>
+          <SectionError what="the changes" error={first.error} onRetry={first.reload} />
         ) : !data ? (
           <div className="activity-skeleton" aria-busy="true" aria-label="Loading changes">
             {[0, 1, 2].map((i) => (

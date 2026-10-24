@@ -12,7 +12,7 @@ import { useAccess } from './AuthGate';
 import { OutcomeText, RemarkField, SaveMark, StudentField, type OutcomePatch, type SaveState } from './FollowUpControls';
 import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
 import JobDetailsModal, { CopyButton } from './JobDetailsModal';
-import { CardHeader, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
+import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 
 // "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
@@ -364,7 +364,6 @@ export default function PerformanceReport() {
   return (
     <main className="page">
       <PageHeader
-        icon={<ChartIcon size={20} />}
         eyebrow={`Team · ${period.label}`}
         title="Performance report"
         subtitle="How many HR phone numbers and emails each person added, and where; and for each one, the student it was given to and how it went."
@@ -413,7 +412,7 @@ export default function PerformanceReport() {
           }
           description={
             view === 'people'
-              ? "Most first at every level. Phone numbers and emails count once each; a number already in the job's posting, or only written differently, doesn't count. Open a job to assign each number and email and add its remark."
+              ? "Most first. Each number and email counts once; one already in the job post doesn't count."
               : 'Every number and email once, newest first. Assign a student and pick a remark: each saves by itself.'
           }
           actions={
@@ -454,9 +453,7 @@ export default function PerformanceReport() {
         </datalist>
 
         {perf.error ? (
-          <p className="activity-empty" role="alert">
-            {perf.error.message}
-          </p>
+          <SectionError what="the report" error={perf.error} onRetry={perf.reload} />
         ) : !data ? (
           <div className="activity-skeleton" aria-busy="true" aria-label="Loading the report">
             {[0, 1, 2].map((i) => (

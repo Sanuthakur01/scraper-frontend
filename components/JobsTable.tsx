@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
 import { useAccess } from './AuthGate';
-import { CONTACT_COLUMNS, PROFILE_COLUMN, type ContactColumn } from './ContactCell';
-import type { FieldKey } from './ContactForm';
+import { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
 import { experienceBands, formatNumber, periodParams, periodQuery, type Period } from '@/lib/format';
@@ -18,7 +17,7 @@ import {
   ListIcon,
   SearchIcon,
 } from './Icons';
-import { CardHeader } from './PageParts';
+import { CardHeader, SectionError } from './PageParts';
 
 // The same test as the server's count (GET /api/jobs withContact): a phone, email or note.
 const hasContact = ({ contact }: Job) => Boolean(contact.hrNames?.length || contact.hrProfiles?.length || contact.phone || contact.email || contact.remarks);
@@ -40,10 +39,9 @@ function ContactProgress({ done, total }: { done: number; total: number }) {
   );
 }
 
-// A filter that has no dropdown (set by a card or a chart): its name, and × to remove it.
 // The head of an HR details column, with its icon.
 const hrHead = (c: ContactColumn) => (
-  <th scope="col" key={c.field} className={`hr-head hr-${c.field}`}>
+  <th scope="col" key={c.key} className={`hr-head hr-${c.key}`}>
     <span className="hr-head-label">
       {c.icon}
       {c.label}
@@ -51,6 +49,7 @@ const hrHead = (c: ContactColumn) => (
   </th>
 );
 
+// A filter that has no dropdown (set by a card or a chart): its name, and × to remove it.
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="filter-chip">
@@ -104,8 +103,10 @@ interface Props {
 }
 
 // The job list: search and filters, one row per job (each job once, however many sites list it).
-// Clicking a company name opens the job's details window, where the team sees and fills in the HR phone
-// numbers, emails, students and notes. Expand shows more columns; ← → scroll them.
+// "HR contact" (names, numbers, emails) and "Assigned to" are edited in place with the pencil; clicking a
+// company name opens the job's details window with everything about it. It fits a laptop's width as it
+// opens; Expand adds salary, skills, work mode, notes and more, and ← → scroll to them. On phones each
+// job is a card.
 export default function JobsTable({ courses, meta, period, filterState, lockedCourse, title = 'Jobs' }: Props) {
   const { filters, setFilters, search, setSearch, show } = filterState;
   const [page, setPage] = useState(1);
@@ -119,8 +120,8 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
   // progress line moves at once. A reload's count already includes them, so it counts from zero again.
   const [contactChange, setContactChange] = useState<{ base: JobsResponse | null; n: number }>({ base: null, n: 0 });
   const side = useSideScroll();
-  // The HR cell being edited (one at a time), and whether this person may edit them at all.
-  const [editingCell, setEditingCell] = useState<{ jobId: string; field: FieldKey } | null>(null);
+  // The HR cell being edited (one at a time: a row and a column key), and whether this person may edit.
+  const [editingCell, setEditingCell] = useState<{ jobId: string; column: string } | null>(null);
   const mayEdit = useAccess()?.can('edit-hr-details') ?? false;
   const section = useRef<HTMLElement>(null);
 
@@ -160,7 +161,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
   const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <section ref={section} className="card card-flush" id="jobs">
+    <section ref={section} className="card card-flush jobs-card" id="jobs">
       <CardHeader
         icon={<ListIcon />}
         title={
@@ -169,7 +170,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
             {data && <span className="count-badge">{formatNumber(data.total)}</span>}
           </>
         }
-        description="Each job is shown once, even when several sites list it. Edit HR details with the pencil beside them (← → scroll to the rest), or click a company name for everything about the job."
+        description="Each job once, however many sites list it. Open a company for everything about the job."
         actions={
           <>
             {data && data.total > 0 && <ContactProgress done={withContact} total={data.total} />}
@@ -258,9 +259,12 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
         </div>
       </div>
 
-      {jobs.error && <p className="empty">Could not load jobs: {jobs.error.message}</p>}
+      {jobs.error && <SectionError what="the jobs" error={jobs.error} onRetry={jobs.reload} />}
 
-      <div ref={side.ref} className={`table-wrap ${side.left ? 'scrolled' : ''} ${jobs.loading ? 'is-loading' : ''}`}>
+      <div
+        ref={side.ref}
+        className={`table-wrap ${side.left || side.right ? 'overflows' : ''} ${side.left ? 'scrolled' : ''} ${jobs.loading ? 'is-loading' : ''}`}
+      >
         <table className={`data-table jobs-table ${expanded ? 'expanded' : ''}`}>
           <thead>
             <tr>
@@ -275,7 +279,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
                   <th scope="col">Skills</th>
                   <th scope="col">Work mode</th>
                   <th scope="col">Found by us</th>
-                  {hrHead(PROFILE_COLUMN)}
+                  {EXTRA_COLUMNS.map(hrHead)}
                 </>
               )}
             </tr>
@@ -291,8 +295,8 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
                   expanded={expanded}
                   onOpen={setDetail}
                   mayEdit={mayEdit}
-                  editing={editingCell?.jobId === job._id ? editingCell.field : null}
-                  onEdit={(field) => setEditingCell(field ? { jobId: job._id, field } : null)}
+                  editing={editingCell?.jobId === job._id ? editingCell.column : null}
+                  onEdit={(column) => setEditingCell(column ? { jobId: job._id, column } : null)}
                   onSaved={onSaved}
                 />
               );

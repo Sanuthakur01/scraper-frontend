@@ -143,7 +143,6 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
             <ChevronLeftIcon size={14} /> Dashboard
           </Link>
         }
-        icon={courseInitials(course.name)}
         title={course.name}
         subtitle={`New openings for this course on ${meta.data.platforms.join(', ')} · ${period.from ? period.label : formatDay(d.anchor)}`}
         actions={
@@ -229,10 +228,10 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
         <div className={`grid-2 ${loading}`}>
           <section className="card">
             <CardHeader
-              level={3}
               icon={<LayersIcon />}
+              level={3}
               title="Where they come from"
-              description="Counted once, on the site posted first. “On site” includes jobs also found elsewhere. Click a number to see its jobs."
+              description="Counted once, on the site posted first. “On site” includes jobs also found elsewhere."
             />
             <div className="table-wrap">
               <table className="data-table">
@@ -285,10 +284,10 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
 
           <section className="card">
             <CardHeader
-              level={3}
               icon={<ClockIcon />}
+              level={3}
               title="How fresh the posts were"
-              description="Time from the site's posting date to when we found the job · click a bar to see its jobs"
+              description="Time from the site's posting date to when we found the job"
             />
             <RankList
               items={POSTING_AGES.map((b) => ({ id: b.id, name: b.label, count: d.postingAge[b.id as PostingAgeBucket] ?? 0 }))}
@@ -300,21 +299,21 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
         </div>
 
         <section className="card">
-          <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="The last 30 days · click a day to see its jobs" />
+          <CardHeader level={3} icon={<TrendIcon />} title="New jobs per day" description="The last 30 days" />
           <TrendChart courses={[course]} state={trends} onSelectDay={(day) => showJobs({ day })} />
         </section>
 
         <div className={`grid-2 ${loading}`}>
           <section className="card">
-            <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings for this course · click one to see its jobs" />
+            <CardHeader level={3} icon={<BuildingIcon />} title="Top hiring companies" description="Most new openings for this course" />
             <RankList items={d.companies} color={color} selected={jobFilters.filters.company} onSelect={(item) => showJobs({ company: item.name })} />
           </section>
           <section className="card">
-            <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where these openings are · click one to see its jobs" />
+            <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where these openings are" />
             <RankList items={d.cities} color={color} selected={jobFilters.filters.city} onSelect={(item) => showJobs({ city: item.name })} />
           </section>
           <section className="card card-grow">
-            <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post (5+ = more than 5) · click a column" />
+            <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post (5+ = more than 5)" />
             <ExperienceColumns
               items={d.total ? experience : []}
               color={color}
@@ -323,7 +322,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
             />
           </section>
           <section className="card">
-            <CardHeader level={3} icon={<SparklesIcon />} title="Most requested skills" description="Job posts naming each skill · click one to see them" />
+            <CardHeader level={3} icon={<SparklesIcon />} title="Most requested skills" description="Job posts naming each skill" />
             <RankList items={d.skills} color={color} selected={jobFilters.filters.skill} onSelect={(item) => showJobs({ skill: item.name })} />
           </section>
         </div>

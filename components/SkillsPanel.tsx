@@ -6,7 +6,7 @@ import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
 import { ExternalIcon, SparklesIcon } from './Icons';
 import { RankList } from './Insights';
-import { CardHeader, Segmented } from './PageParts';
+import { CardHeader, SectionError, Segmented } from './PageParts';
 
 const PILLS = 14; // skills offered to try
 const JOBS_SHOWN = 25; // jobs listed before "Show all"
@@ -60,8 +60,8 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
   return (
     <section className="card">
       <CardHeader
-        level={3}
         icon={<SparklesIcon />}
+        level={3}
         title="Skill planner"
         description="Skills to add to a course, and how many more jobs students could then apply for"
         actions={
@@ -105,7 +105,7 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
               </>
             )}
           </p>
-          {gaps.error && <p className="empty">Could not load: {gaps.error.message}</p>}
+          {gaps.error && <SectionError what={`the skills for ${courseName}`} error={gaps.error} onRetry={gaps.reload} />}
           {data && data.postings === 0 && <p className="empty">No {courseName} job posts in this period yet.</p>}
 
           {data && data.postings > 0 && (

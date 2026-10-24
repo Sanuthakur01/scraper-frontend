@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder } from '@/lib/format';
 import type { Job } from '@/lib/types';
-import ContactCell, { CONTACT_COLUMNS, PROFILE_COLUMN } from './ContactCell';
-import { contactSummary, ContactIcons, type FieldKey } from './ContactForm';
+import ContactCell, { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
+import { contactSummary, ContactIcons } from './ContactForm';
 import { ExternalIcon } from './Icons';
 
 const SKILLS_SHOWN = 3;
@@ -45,28 +45,29 @@ function Skills({ skills, jobTitle }: { skills: string[]; jobTitle: string }) {
 interface Props {
   job: Job;
   courseName?: string; // shown under the title when the list has several courses
-  expanded: boolean; // also show salary, skills, work mode, when we found it and HR profile links
+  expanded: boolean; // also show salary, skills, work mode, when we found it, notes and HR profile links
   onOpen: (job: Job) => void; // the company name was clicked: open the job's details window
   mayEdit: boolean; // the signed-in person's role may edit HR details
-  editing: FieldKey | null; // the HR column being edited in this row, if any
-  onEdit: (field: FieldKey | null) => void; // open one of this row's HR cells (null: close it)
+  editing: string | null; // the key of the HR column being edited in this row, if any
+  onEdit: (column: string | null) => void; // open one of this row's HR cells (null: close it)
   onSaved: (job: Job) => void;
 }
 
 // One job in the job list: what the job is, then its HR details in columns that are edited right
 // there (ContactCell). The company name opens the job's details window with everything about it; small
-// icons under the name say which HR details the job already has.
+// icons under the name say which HR details the job already has. On phones each row is a card, and
+// data-label names each cell.
 export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, editing, onEdit, onSaved }: Props) {
   const summary = contactSummary(job.contact);
   const company = job.company || 'Company not shown';
-  const cell = (field: FieldKey) => (
+  const cell = (column: ContactColumn) => (
     <ContactCell
-      key={field}
+      key={column.key}
       job={job}
-      field={field}
+      column={column}
       mayEdit={mayEdit}
-      editing={editing === field}
-      onEdit={() => onEdit(field)}
+      editing={editing === column.key}
+      onEdit={() => onEdit(column.key)}
       onClose={() => onEdit(null)}
       onSaved={onSaved}
     />
@@ -112,8 +113,10 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           </span>
         )}
       </td>
-      <td className="nowrap">{formatExperience(job)}</td>
-      <td>
+      <td className="nowrap" data-label="Experience">
+        {formatExperience(job)}
+      </td>
+      <td data-label="Found on">
         <ul className="listings">
           {listingOrder(job).map((platform) => (
             <li key={platform}>
@@ -125,19 +128,27 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           ))}
         </ul>
       </td>
-      <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
+      <td className="nowrap muted" data-label="Posted">
+        {formatPosted(job.postedAt ?? job.firstSeenAt)}
+      </td>
 
-      {CONTACT_COLUMNS.map(({ field }) => cell(field))}
+      {CONTACT_COLUMNS.map(cell)}
 
       {expanded && (
         <>
-          <td className="extra-cell">{job.salaryText || <span className="muted">Not shown</span>}</td>
-          <td className="extra-cell skills-cell">
+          <td className="extra-cell" data-label="Salary">
+            {job.salaryText || <span className="muted">Not shown</span>}
+          </td>
+          <td className="extra-cell skills-cell" data-label="Skills">
             <Skills skills={job.skills ?? []} jobTitle={job.title} />
           </td>
-          <td className="nowrap">{job.isRemote ? 'Remote' : 'On-site'}</td>
-          <td className="nowrap muted">{formatDate(job.firstSeenAt)}</td>
-          {cell(PROFILE_COLUMN.field)}
+          <td className="nowrap" data-label="Work mode">
+            {job.isRemote ? 'Remote' : 'On-site'}
+          </td>
+          <td className="nowrap muted" data-label="Found by us">
+            {formatDate(job.firstSeenAt)}
+          </td>
+          {EXTRA_COLUMNS.map(cell)}
         </>
       )}
     </tr>

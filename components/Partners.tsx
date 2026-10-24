@@ -5,7 +5,7 @@ import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDate, formatNumber, percent } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse } from '@/lib/types';
 import CompanyJobs from './CompanyJobs';
-import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, PhoneIcon, SearchIcon } from './Icons';
 import { CardHeader, Freshness, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
 const SHOWN = 25; // companies listed before "Show all"
@@ -52,7 +52,6 @@ export default function Partners() {
   return (
     <main className="page">
       <PageHeader
-        icon={<UsersIcon size={20} />}
         eyebrow={`Sales · last ${data.days} days`}
         title="Hiring partners"
         subtitle="Companies that keep hiring for your courses. Approach them for hiring partnerships, campus drives and corporate training."
@@ -106,7 +105,7 @@ export default function Partners() {
               Companies <span className="count-badge">{formatNumber(matches.length)}</span>
             </>
           }
-          description="Most openings first. The same company spelled differently on different sites counts once. Click a company to see its openings."
+          description="Most openings first. A company spelled differently on different sites counts once."
           actions={
             <a className="btn" href={apiUrl('partners.csv')}>
               <DownloadIcon /> Download CSV

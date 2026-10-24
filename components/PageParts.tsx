@@ -3,18 +3,16 @@ import { formatDateTime, formatUpdated } from '@/lib/format';
 import type { LastRun } from '@/lib/types';
 import { AlertIcon } from './Icons';
 
-// The top of a page: a small line above, an icon tile and the title, one line of explanation, a row of
-// small facts (freshness), and the page's controls on the right.
+// The top of a page: a small line above, a large title (no icon beside it, as on Apple's platforms),
+// one line of explanation, a row of small facts (freshness), and the page's controls on the right.
 export function PageHeader({
   eyebrow,
-  icon,
   title,
   subtitle,
   actions,
   children,
 }: {
   eyebrow?: ReactNode;
-  icon?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -24,14 +22,7 @@ export function PageHeader({
     <header className="page-header">
       <div className="page-heading">
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <div className="page-title-row">
-          {icon && (
-            <span className="page-icon" aria-hidden="true">
-              {icon}
-            </span>
-          )}
-          <h1>{title}</h1>
-        </div>
+        <h1>{title}</h1>
         {subtitle && <p className="subtitle">{subtitle}</p>}
         {children && <div className="page-meta">{children}</div>}
       </div>
@@ -115,6 +106,28 @@ export function Freshness({ lastRun, scheduleLabel }: { lastRun: LastRun | null;
         </span>
       )}
     </>
+  );
+}
+
+// A part of a page that couldn't load, in place of what it would show: what went wrong (the server's
+// own words, e.g. "Your sign-in has expired…") and Try again, which fetches it again. A page that can't
+// load at all shows PageError instead.
+export function SectionError({ what, error, onRetry }: { what: string; error: Error; onRetry?: () => void }) {
+  return (
+    <div className="section-error" role="alert">
+      <span className="section-error-icon" aria-hidden="true">
+        <AlertIcon size={18} />
+      </span>
+      <p className="section-error-text">
+        <strong>Couldn&apos;t load {what}</strong>
+        <span>{error.message}</span>
+      </p>
+      {onRetry && (
+        <button type="button" className="btn btn-sm" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/li
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { InsightsResponse, Meta, PlatformsResponse, Summary, TrendsResponse } from '@/lib/types';
 import GlobalSearch from './GlobalSearch';
-import { DashboardIcon, LayersIcon, TrendIcon } from './Icons';
+import { LayersIcon, TrendIcon } from './Icons';
 import Insights from './Insights';
 import JobsDrawer, { type JobsView } from './JobsDrawer';
 import { CardHeader, Freshness, PageError, PageHeader, PageSection, PageSkeleton, Segmented } from './PageParts';
@@ -95,7 +95,6 @@ export default function Dashboard() {
       )}
 
       <PageHeader
-        icon={<DashboardIcon size={20} />}
         eyebrow={`India job market${period.from ? ` · ${period.label}` : anchor ? ` · ${formatDay(anchor)}` : ''}`}
         title="Job market overview"
         actions={
@@ -112,14 +111,14 @@ export default function Dashboard() {
 
       <GlobalSearch courses={courses} />
 
-      <StatTiles courses={courses} state={summary} period={period} />
+      <StatTiles courses={courses} state={summary} period={period} onShowAll={() => showJobs({}, 'All new jobs')} />
 
       <PageSection title="Market activity">
         <div className="grid-2">
           <section className="card card-stretch">
             <CardHeader
-              level={3}
               icon={<LayersIcon />}
+              level={3}
               title="Where the jobs come from"
               description="Each job counted once, on the site that posted it first"
               actions={

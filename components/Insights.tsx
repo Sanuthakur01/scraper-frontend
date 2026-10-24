@@ -3,7 +3,7 @@ import { useDataView } from '@/lib/dataView';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { ApiState, InsightsResponse, NamedCount } from '@/lib/types';
 import { BriefcaseIcon, BuildingIcon, MapPinIcon } from './Icons';
-import { CardHeader } from './PageParts';
+import { CardHeader, SectionError } from './PageParts';
 
 // A bar's name and count; id when the filter value differs from the name (e.g. experience '5' = "5 yrs").
 export type ChartItem = NamedCount & { id?: string };
@@ -141,6 +141,8 @@ export default function Insights({
   const data = state.data;
   const { view } = useDataView();
   const experience = experienceBands(experienceRange, view).map((band) => ({ id: band.id, name: band.label, count: data?.experience[band.id] ?? 0 }));
+
+  if (state.error) return <SectionError what="who is hiring" error={state.error} onRetry={state.reload} />;
 
   return (
     <div className={`grid-3 ${state.loading ? 'is-loading' : ''}`}>

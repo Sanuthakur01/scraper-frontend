@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Too
 import { COURSE_COLORS, formatDay, formatNumber } from '@/lib/format';
 import type { ApiState, Course, TrendPoint, TrendsResponse } from '@/lib/types';
 import Legend from './Legend';
+import { SectionError } from './PageParts';
 
 interface TooltipProps {
   active?: boolean;
@@ -62,6 +63,8 @@ export default function TrendChart({
     }
   };
 
+  if (state.error) return <SectionError what="the new jobs per day" error={state.error} onRetry={state.reload} />;
+
   return (
     <div className={state.loading ? 'is-loading' : ''}>
       {/* One course needs no legend: the heading names it. */}
@@ -76,7 +79,7 @@ export default function TrendChart({
               if (typeof chart?.activeLabel === 'string') onSelectDay(chart.activeLabel);
             }}
           >
-            <CartesianGrid vertical={false} stroke="var(--grid)" />
+            <CartesianGrid stroke="var(--grid)" strokeDasharray="3 5" />
             {backfillDays.length > 0 && (
               <ReferenceArea x1={backfillDays[0].day} x2={backfillDays.at(-1)?.day} fill="var(--grid)" fillOpacity={0.6} ifOverflow="hidden" />
             )}
@@ -102,7 +105,8 @@ export default function TrendChart({
                 dataKey={c.id}
                 name={c.name}
                 stroke={COURSE_COLORS[c.id]}
-                strokeWidth={2}
+                strokeWidth={2.25}
+                className={`trend-line course-${c.id}`}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 dot={fewDays ? { r: 4, fill: COURSE_COLORS[c.id], stroke: 'var(--surface)', strokeWidth: 2 } : false}

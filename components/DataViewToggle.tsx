@@ -1,70 +1,39 @@
 'use client';
 
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import { useDataView } from '@/lib/dataView';
 import { AlertIcon } from './Icons';
 
-const SWIPE_PX = 12; // a press that moves further than this sideways is a swipe, not a click
-
-// The Filtered / Non-filtered switch, right of the light/dark button. Left = Filtered (the jobs the
-// dashboard always showed), right = Non-filtered (the jobs our filters leave out). A click, Space or
-// Enter flips it; a swipe or the arrow keys choose the side.
+// The Filtered / Non-filtered switch in the top bar: a segmented control of two. Each half chooses its
+// own side, so choosing the side already shown changes nothing (Apple's Segmented controls: a control
+// that shows a selection never acts like a button). Left = Filtered (the jobs the dashboard counts),
+// right = Non-filtered (the jobs our filters leave out); the knob slides to the side shown.
 export default function DataViewToggle() {
   const { view, ready, setView } = useDataView();
   const nonFiltered = view === 'nonfiltered';
-  const press = useRef<{ x: number } | null>(null);
-  const swipedAt = useRef(0);
-
-  const onPointerDown = (event: PointerEvent) => {
-    press.current = { x: event.clientX };
-  };
-  const onPointerUp = (event: PointerEvent) => {
-    const dx = press.current ? event.clientX - press.current.x : 0;
-    press.current = null;
-    if (Math.abs(dx) > SWIPE_PX) {
-      swipedAt.current = Date.now();
-      setView(dx > 0 ? 'nonfiltered' : 'filtered');
-    }
-  };
-  const onClick = () => {
-    if (Date.now() - swipedAt.current < 500) return; // the swipe already chose the side
-    setView(nonFiltered ? 'filtered' : 'nonfiltered');
-  };
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      event.preventDefault();
-      setView(event.key === 'ArrowRight' ? 'nonfiltered' : 'filtered');
-    }
-  };
 
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={nonFiltered}
-      aria-label="Non-filtered data"
-      title={
-        nonFiltered
-          ? 'Showing Non-filtered data: the jobs our filters leave out. Click or swipe left for Filtered.'
-          : 'Showing Filtered data. Click or swipe right for Non-filtered: the jobs our filters leave out.'
-      }
-      className={`view-switch ${nonFiltered ? 'on' : ''}`}
-      disabled={!ready}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => (press.current = null)}
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-    >
+    <div className={`view-switch ${nonFiltered ? 'on' : ''}`} role="group" aria-label="Jobs to show">
       <span className="view-switch-knob" aria-hidden="true" />
-      <span className="view-switch-option" aria-hidden="true">
+      <button
+        type="button"
+        aria-pressed={!nonFiltered}
+        disabled={!ready}
+        onClick={() => setView('filtered')}
+        title="Filtered: the jobs the dashboard counts"
+      >
         Filtered
-      </span>
-      <span className="view-switch-option" aria-hidden="true">
+      </button>
+      <button
+        type="button"
+        aria-pressed={nonFiltered}
+        disabled={!ready}
+        onClick={() => setView('nonfiltered')}
+        title="Non-filtered: the jobs our filters leave out"
+      >
         {nonFiltered && <AlertIcon size={13} />}
         Non-filtered
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
