@@ -77,8 +77,8 @@ export function NonFilteredNote() {
       <div className="view-note-inner">
         <AlertIcon size={16} />
         <p>
-          <strong>Non-filtered data.</strong> Jobs that fit your courses but our filters leave out: large IT services firms, too little
-          experience, or experience not stated; and the jobs from our extra searches (MIS Executive, Business Analyst, Site Reliability
+          <strong>Non-filtered data.</strong> Jobs that fit your courses but our filters leave out: large IT services firms, fresher jobs,
+          or experience not stated; and the jobs from our extra searches (MIS Executive, Business Analyst, Site Reliability
           Engineer). Every number and list on this page is about these jobs.
         </p>
         <button type="button" className="btn btn-sm" onClick={() => setView('filtered')}>

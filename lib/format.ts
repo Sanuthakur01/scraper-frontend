@@ -35,7 +35,7 @@ export function experienceBands({ min, max }: ExperienceRange, view: DataView = 
   if (view === 'nonfiltered') return ALL_BANDS;
   const bands: { id: string; label: string }[] = [];
   for (let years = min; years <= 5 && (max == null || years <= max); years++) {
-    bands.push(years <= 0 ? { id: 'fresher', label: 'Fresher' } : { id: String(years), label: `${years} yrs` });
+    bands.push(years <= 0 ? { id: 'fresher', label: 'Fresher' } : { id: String(years), label: years === 1 ? '1 yr' : `${years} yrs` });
   }
   if (max == null || max > 5) bands.push({ id: '5+', label: '5+ yrs' });
   return bands;
@@ -113,10 +113,11 @@ export function periodFrom(params: { get(name: string): string | null }, presets
 export const periodParams = (p: Period) => (p.from ? { from: p.from, to: p.to } : { days: p.days });
 export const periodQuery = (p: Period) => (p.from ? `from=${p.from}&to=${p.to}` : `days=${p.days}`);
 
-// Why a Non-filtered job is left out, in words (server: leftOutReason in config/filters.js).
+// Why a Non-filtered job is left out, in words (server: leftOutReason in config/filters.js). 'experience':
+// under the server's EXPERIENCE_MIN, 1 year since 24 Oct 2026, so the fresher jobs.
 export const LEFT_OUT_LABELS: Record<LeftOutReason, string> = {
   'big-company': 'Large IT services firm',
-  experience: 'Too little experience',
+  experience: 'Fresher',
   'no-experience': 'Experience not stated',
   'extra-search': 'Extra search',
 };
