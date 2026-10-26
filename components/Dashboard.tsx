@@ -151,7 +151,7 @@ export default function Dashboard() {
       </PageSection>
 
       <PageSection title="Who is hiring">
-        <Insights state={insights} experienceRange={meta.data.filters.experience} onSelect={showJobs} />
+        <Insights courses={courses} state={insights} experienceRange={meta.data.filters.experience} onSelect={showJobs} />
       </PageSection>
 
       <PageSection title="Skills and curriculum">

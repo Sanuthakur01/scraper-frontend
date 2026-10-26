@@ -113,6 +113,36 @@ export function buildTree(rows: PerformanceRow[], courseName: (id: string) => st
   return group(rows, 0, '');
 }
 
+// "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
+export const initials = (name: string, email: string) =>
+  (name.trim() && name !== email ? name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]) : [email[0] ?? '?']).join('').toUpperCase();
+
+// One person's place on the daily leaderboard: the contact details (phone numbers + emails) they added.
+export interface Standing {
+  email: string;
+  name: string;
+  role: string | null;
+  phones: number;
+  emails: number;
+  total: number;
+  jobs: number;
+  rank: number; // 1 = the most; the same total shares a place (1, 2, 2, 4)
+}
+
+// The leaderboard: whoever added the most contact details first (counted as in the report's Total), then A–Z.
+export function standings(rows: PerformanceRow[]): Standing[] {
+  const people = buildTree(rows).map((node) => ({
+    email: node.person?.email ?? node.label,
+    name: node.label,
+    role: node.person?.role ?? null,
+    phones: node.phones,
+    emails: node.emails,
+    total: node.total,
+    jobs: node.jobs,
+  }));
+  return people.map((person) => ({ ...person, rank: 1 + people.filter((other) => other.total > person.total).length }));
+}
+
 // Every node's id (for "Expand all").
 export const allIds = (nodes: PerfNode[]): string[] => nodes.flatMap((n) => [n.id, ...allIds(n.children)]);
 

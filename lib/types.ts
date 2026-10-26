@@ -63,6 +63,7 @@ export interface TrendsResponse {
 export interface NamedCount {
   name: string;
   count: number;
+  byCourse?: CourseCounts; // the same count per course (the dashboard's top companies and cities)
 }
 
 export interface InsightsResponse {
@@ -72,6 +73,7 @@ export interface InsightsResponse {
   companies: NamedCount[];
   cities: NamedCount[];
   experience: Record<string, number>;
+  experienceByCourse?: Record<string, CourseCounts>; // each experience level's jobs per course
   skills: Partial<Record<CourseId, NamedCount[]>>;
 }
 

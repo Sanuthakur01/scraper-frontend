@@ -9,15 +9,13 @@ import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, outcomeKey, performanceC
 import { signInHeader } from '@/lib/session';
 import type { ContactOutcome, Job, JobsResponse, Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
 import { useAccess } from './AuthGate';
+import Avatar from './Avatar';
 import { OutcomeText, RemarkField, SaveMark, StudentField, type OutcomePatch, type SaveState } from './FollowUpControls';
 import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
 import JobDetailsModal, { CopyButton } from './JobDetailsModal';
+import Leaderboard from './Leaderboard';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
-
-// "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
-const initials = (name: string, email: string) =>
-  (name.trim() && name !== email ? name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]) : [email[0] ?? '?']).join('').toUpperCase();
 
 // "today", "in the last 7 days", "on 9–12 Oct"
 const periodWords = (p: Period) => (p.from ? `on ${p.label}` : p.days === 1 ? 'today' : `in the ${p.label.toLowerCase()}`);
@@ -56,9 +54,7 @@ function NodeLabel({ node }: { node: PerfNode }) {
     const role = roleFrom({ role: node.person.role ?? '' });
     return (
       <>
-        <span className="activity-avatar perf-avatar" aria-hidden="true">
-          {initials(node.person.name, node.person.email)}
-        </span>
+        <Avatar name={node.person.name} email={node.person.email} className="activity-avatar perf-avatar" />
         <span className="perf-person">
           <strong>{node.label}</strong>
           {node.label !== node.person.email && <span className="muted perf-email">{node.person.email}</span>}
@@ -400,6 +396,8 @@ export default function PerformanceReport() {
           </div>
         ))}
       </section>
+
+      <Leaderboard refresh={reload} />
 
       <section className="card card-flush perf-card">
         <CardHeader

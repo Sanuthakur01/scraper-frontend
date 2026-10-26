@@ -365,3 +365,21 @@ export const ThumbDownIcon = (p: P) => (
     <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z" />
   </Icon>
 );
+
+export const TrophyIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" />
+    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4.4" />
+    <path d="M17 6h2.5a2.5 2.5 0 0 1-2.6 4.4" />
+    <path d="M12 14v4" />
+    <path d="M8 21h8" />
+    <path d="M9.5 18h5l.5 3h-6l.5-3Z" />
+  </Icon>
+);
+
+export const CrownIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="m3 7 4.5 4L12 4l4.5 7L21 7l-2 11H5L3 7Z" />
+    <path d="M5 21h14" />
+  </Icon>
+);

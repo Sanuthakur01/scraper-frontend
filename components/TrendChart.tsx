@@ -1,7 +1,8 @@
 import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis, useActiveTooltipLabel } from 'recharts';
-import { COURSE_COLORS, formatDay, formatNumber } from '@/lib/format';
+import { COURSE_COLORS, formatDay } from '@/lib/format';
 import type { ApiState, Course, TrendPoint, TrendsResponse } from '@/lib/types';
+import { CourseBreakdown } from './ChartTip';
 import Legend from './Legend';
 import { SectionError } from './PageParts';
 
@@ -11,20 +12,19 @@ interface TooltipProps {
   courses: Course[];
 }
 
-// One readout lists every course for the hovered day.
+// One readout lists every course for the hovered day (the same card as the dashboard's bars).
 function TrendTooltip({ active, point, courses }: TooltipProps) {
   if (!active || !point) return null;
   return (
     <div className="tooltip tooltip-static">
-      <span className="tooltip-title">{formatDay(point.day)}</span>
-      {courses.map((c) => (
-        <div className="tooltip-row" key={c.id}>
-          <span className="key-line" style={{ background: COURSE_COLORS[c.id] }} aria-hidden="true" />
-          <strong>{formatNumber(point[c.id])}</strong>
-          <span>{c.name}</span>
-        </div>
-      ))}
-      <span className="tooltip-hint">Click to see this day&apos;s jobs</span>
+      <CourseBreakdown
+        title={formatDay(point.day)}
+        total={courses.reduce((n, c) => n + (point[c.id] ?? 0), 0)}
+        counts={point}
+        courses={courses}
+        kind="line"
+        hint="Click to see this day's jobs"
+      />
     </div>
   );
 }

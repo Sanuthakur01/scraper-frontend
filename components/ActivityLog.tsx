@@ -6,6 +6,7 @@ import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, dayHeading, formatDateTime, formatNumber, formatTime, istDayOf } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
 import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
+import Avatar from './Avatar';
 import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
@@ -25,10 +26,6 @@ const FIELDS: Record<ActivityChange['field'], { label: string; icon: ReactNode }
 };
 
 const ACTION_LABELS: Record<ActivityAction, string> = { added: 'Added', edited: 'Edited', removed: 'Removed' };
-
-// "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
-const initials = (name: string, email: string) =>
-  (name.trim() ? name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]) : [email[0] ?? '?']).join('').toUpperCase();
 
 // One field's change: values added (green +) and removed (red, struck out); a value only rewritten, or
 // the notes, as before → after.
@@ -85,9 +82,7 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
   const course = courses.find((c) => c.id === job.course);
   return (
     <li className="activity-item">
-      <span className="activity-avatar" aria-hidden="true">
-        {initials(actor.name ?? '', actor.email)}
-      </span>
+      <Avatar name={actor.name ?? ''} email={actor.email} className="activity-avatar" />
       <div className="activity-main">
         <p className="activity-who">
           <strong>{actor.name || actor.email}</strong>

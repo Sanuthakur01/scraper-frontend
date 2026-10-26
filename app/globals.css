@@ -128,6 +128,7 @@
   --series-3: #1baf7a;
   --series-4: #eda100;
   --series-sre: #b02fcf; /* SRE Openings: not a course, its own hue (magenta) beside the four */
+  --medal-gold: #e0a200; /* the daily leaderboard's first place: crown, ring, glow (never text) */
 }
 
 /* Dark: the computer's setting, unless someone picked light with the switch in the top bar... */
@@ -210,6 +211,7 @@
     --series-3: #199e70;
     --series-4: #c98500;
     --series-sre: #c255de;
+    --medal-gold: #f5c443;
   }
 }
 
@@ -292,6 +294,7 @@
   --series-3: #199e70;
   --series-4: #c98500;
   --series-sre: #c255de;
+  --medal-gold: #f5c443;
 }
 
 /* Reduce Transparency, or a browser without backdrop blur: every card and glass surface is solid. The
@@ -3174,15 +3177,84 @@ button.exp-col:disabled {
   margin-bottom: 2px;
 }
 
-.tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* A chart whose bars split by course in a tooltip: the tooltip is placed within it */
+.tip-root {
+  position: relative;
 }
 
-.tooltip-row strong {
-  min-width: 28px;
+/* Under its mark instead, when the header would hide it */
+.tooltip.is-below {
+  transform: translate(-50%, 8px);
+}
+
+/* The tooltip that splits a bar by course: its name and total, then one line per course */
+.tip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.tooltip .tip-head .tooltip-title {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.tip-total strong {
   font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.tip-courses {
+  display: grid;
+  gap: 1px;
+  min-width: 210px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.tip-course {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.tooltip .tip-course strong {
+  font-size: var(--text-footnote);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-primary);
+}
+
+/* The course under the pointer */
+.tip-course.is-current {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.tooltip .tip-course.is-current .tip-course-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tip-course.is-zero {
+  opacity: 0.5;
+}
+
+/* The point at the end of a ranked row's bar, where its tooltip points */
+.rank-bar {
+  position: relative;
+}
+
+.rank-bar-end {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
 }
 
 /* Ranked list: name and value on one line, a thin bar under them */
@@ -7335,6 +7407,640 @@ html:has(.job-modal[open]) {
   .kpis-6 .kpi-go {
     width: 24px;
     height: 24px;
+  }
+}
+
+/* ---------- Performance report: the daily leaderboard (Leaderboard) ---------- */
+/* Yesterday's winner beside today's live standings; gold, silver and bronze for the first three places
+   (each with its place written on it). Motion: rows rise in one after another, bars grow, counts run up;
+   all of it stands still for people who turn motion off (the rule at the end of this file). */
+.lb-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 1.75fr);
+  gap: var(--space-5);
+  align-items: stretch;
+}
+
+.lb-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.lb-eyebrow-icon {
+  color: var(--medal-gold);
+}
+
+/* Yesterday's winner: a gold-lit card, the light sweeping across it now and then */
+.lb-winner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.lb-winner .lb-eyebrow {
+  justify-content: center;
+}
+
+.lb-winner.has-winner {
+  border-color: color-mix(in srgb, var(--medal-gold) 45%, var(--border));
+  background:
+    radial-gradient(90% 65% at 50% 0%, color-mix(in srgb, var(--medal-gold) 22%, transparent), transparent 70%),
+    var(--surface-2);
+}
+
+.lb-winner.has-winner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--medal-gold) 18%, transparent) 50%, transparent 65%) 0 0 / 250% 100%
+    no-repeat;
+  animation: lb-sweep 7s ease-in-out infinite;
+}
+
+/* Across in about 3 seconds, then a rest */
+@keyframes lb-sweep {
+  0% {
+    background-position: 150% 0;
+  }
+  45%,
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+.lb-champ {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 200px;
+  margin-top: var(--space-2);
+  padding-top: 22px;
+}
+
+.lb-crown {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  z-index: 2;
+  color: var(--medal-gold);
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--medal-gold) 60%, transparent));
+  transform: translateX(-50%) rotate(-6deg);
+  animation: lb-bob 2.6s ease-in-out infinite alternate;
+}
+
+.lb-crown svg {
+  fill: color-mix(in srgb, var(--medal-gold) 35%, transparent);
+}
+
+@keyframes lb-bob {
+  to {
+    transform: translate(-50%, -5px) rotate(5deg);
+  }
+}
+
+.lb-champ-avatars {
+  display: flex;
+}
+
+.lb-champ-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--medal-gold) 12%, transparent),
+    0 12px 32px -8px color-mix(in srgb, var(--medal-gold) 70%, transparent);
+}
+
+.lb-champ-avatar + .lb-champ-avatar {
+  margin-left: -14px;
+}
+
+/* Joint winners: smaller, side by side */
+.lb-champ-avatars:has(> :nth-child(2)) .lb-champ-avatar {
+  width: 68px;
+  height: 68px;
+  font-size: 21px;
+}
+
+.lb-champ-avatar > span {
+  position: relative;
+}
+
+/* The gold ring, turning */
+.lb-champ-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--medal-gold), #fff4c2, var(--medal-gold), #a87300, var(--medal-gold));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: lb-spin 6s linear infinite;
+}
+
+@keyframes lb-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Sparkles round the winner, twinkling one after another */
+.lb-spark {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--medal-gold);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+  animation: lb-twinkle 2.8s ease-in-out infinite;
+}
+
+.lb-spark.s0 {
+  top: 26px;
+  left: 18px;
+}
+
+.lb-spark.s1 {
+  top: 44px;
+  right: 22px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  animation-delay: 0.5s;
+}
+
+.lb-spark.s2 {
+  bottom: 6px;
+  left: 30px;
+  width: 7px;
+  height: 7px;
+  animation-delay: 1s;
+}
+
+.lb-spark.s3 {
+  top: 8px;
+  right: 46px;
+  width: 8px;
+  height: 8px;
+  animation-delay: 1.4s;
+}
+
+.lb-spark.s4 {
+  bottom: 14px;
+  right: 26px;
+  background: var(--accent);
+  animation-delay: 1.9s;
+}
+
+.lb-spark.s5 {
+  top: 64px;
+  left: 4px;
+  width: 7px;
+  height: 7px;
+  animation-delay: 2.3s;
+}
+
+@keyframes lb-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}
+
+.lb-champ-name {
+  margin-top: var(--space-2);
+  font-size: var(--text-title3);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lb-champ-score {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+.lb-champ-score strong {
+  font-size: var(--text-title1);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.lb-champ-split {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  font-size: var(--text-footnote);
+  color: var(--text-secondary);
+}
+
+.lb-champ-split span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lb-champ-margin {
+  margin-top: 4px;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--medal-gold) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--medal-gold) 15%, transparent);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.lb-winner-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: var(--space-8) 0;
+  color: var(--text-muted);
+}
+
+.lb-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+/* Today's standings */
+.lb-today {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lb-today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lb-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--good-bg);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  color: var(--good-text);
+}
+
+.lb-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: lb-pulse 1.8s ease-out infinite;
+}
+
+@keyframes lb-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+.lb-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One person: place, initials, name with a bar under it, then their count and the gap to first place
+   (a fixed width, so every row's bar track is the same length and the bars compare) */
+.lb-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 38px minmax(0, 1fr) 6.5rem;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  animation: lb-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+@keyframes lb-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.lb-row.is-leader {
+  border-color: color-mix(in srgb, var(--medal-gold) 45%, var(--border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--medal-gold) 14%, transparent), transparent 75%),
+    var(--surface-2);
+}
+
+/* Someone just took first place: their row pulses gold three times */
+.lb-row.took-lead::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: lb-flash 1.2s ease-out 3;
+}
+
+@keyframes lb-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--medal-gold) 60%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+.lb-medal {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: var(--text-footnote);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* The same metals in light and dark, with dark ink: 6:1 or more where the number sits */
+.lb-medal.gold {
+  border-color: #c98a00;
+  background: linear-gradient(145deg, #ffe489, #f2b100 55%, #d08e00);
+  color: #3d2a00;
+  box-shadow: 0 3px 12px -3px rgba(242, 177, 0, 0.75);
+}
+
+.lb-medal.silver {
+  border-color: #a1abb8;
+  background: linear-gradient(145deg, #f4f6f9, #c5ccd6 55%, #a1abb8);
+  color: #1f2733;
+}
+
+.lb-medal.bronze {
+  border-color: #b8703a;
+  background: linear-gradient(145deg, #f7cba3, #dc9157 55%, #b8703a);
+  color: #35190a;
+}
+
+.lb-medal.gold::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%) 0 0 / 250% 100% no-repeat;
+  animation: lb-sweep 3.5s ease-in-out infinite;
+}
+
+.lb-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: var(--text-footnote);
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.lb-row.is-leader .lb-avatar {
+  box-shadow:
+    0 0 0 2px var(--surface-2),
+    0 0 0 4px var(--medal-gold);
+}
+
+.lb-who {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.lb-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.lb-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-took {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: linear-gradient(145deg, #ffe489, #f2b100);
+  font-size: var(--text-caption);
+  font-weight: 700;
+  color: #3d2a00;
+  animation: lb-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@keyframes lb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.lb-split {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.lb-track {
+  height: 6px;
+  margin-top: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+}
+
+/* Grows in from the left once, then follows the count */
+.lb-fill {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: lb-grow 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 150ms);
+  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes lb-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The leader's bar has a light running along it */
+.lb-row.is-leader .lb-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent) 0 0 / 40% 100% no-repeat;
+  animation: lb-run 2.4s ease-in-out infinite;
+}
+
+@keyframes lb-run {
+  from {
+    background-position: -60% 0;
+  }
+  to {
+    background-position: 160% 0;
+  }
+}
+
+.lb-score {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.lb-total {
+  font-size: var(--text-title2);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.lb-gap {
+  font-size: var(--text-caption);
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.lb-gap.is-lead {
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.lb-today-empty {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  min-height: 180px;
+  padding: var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.lb-skeleton {
+  display: grid;
+  justify-self: stretch;
+  gap: var(--space-2);
+}
+
+.lb-skeleton .skeleton {
+  height: 58px;
+}
+
+/* A teammate's photo in place of their initials (Avatar): it fills the circle. Not clipped by the
+   circle itself, so the winner's gold ring outside it stays visible. */
+.avatar-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.activity-avatar.has-photo,
+.lb-avatar.has-photo {
+  background: none;
+}
+
+@media (max-width: 900px) {
+  .lb-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .lb-row {
+    grid-template-columns: 26px 32px minmax(0, 1fr) 5.25rem;
+    gap: 10px;
+    padding: 10px;
+  }
+  .lb-medal {
+    width: 26px;
+    height: 26px;
+  }
+  .lb-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  .lb-total {
+    font-size: var(--text-title3);
   }
 }
 
