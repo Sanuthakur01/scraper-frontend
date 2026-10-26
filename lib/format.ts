@@ -59,7 +59,7 @@ export interface Period {
 }
 
 export const PERIODS: Period[] = [
-  { key: '1', days: 1, tab: 'Latest day', label: 'Latest day', title: 'New jobs found today', previous: 'previous day' },
+  { key: '1', days: 1, tab: 'Latest day', label: 'Latest day', title: 'New jobs found today', previous: 'yesterday' },
   { key: '7', days: 7, tab: 'Last 7 days', label: 'Last 7 days', title: 'New jobs in the last 7 days', previous: 'previous 7 days' },
   { key: '30', days: 30, tab: 'Last 30 days', label: 'Last 30 days', title: 'New jobs in the last 30 days', previous: 'previous 30 days' },
 ];
@@ -208,6 +208,36 @@ export function formatExperience(job: Job) {
 export function changePercent(current: number, previous: number) {
   if (!previous) return null;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+export interface Change {
+  direction: 'up' | 'down' | 'flat';
+  diff: number; // current minus previous
+  badge: string; // "12%"; "new" when there were none before
+  signed: string; // "+38", "−20", "0"
+}
+
+// How a count changed from the period before ("▲ 12%  +38 vs yesterday"), or null when there is nothing
+// to compare with. comparable: the period before was fully collected, so a 0 then was a real 0 (the
+// server sends no counts for a period it can't compare, which reads as 0 here).
+export function changeOf(current: number, previous: number, comparable = false): Change | null {
+  if (!previous && !comparable) return null;
+  const diff = current - previous;
+  const pct = changePercent(current, previous);
+  return {
+    direction: diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat',
+    diff,
+    badge: pct != null ? `${Math.abs(pct)}%` : diff ? 'new' : '0%',
+    signed: `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${formatNumber(Math.abs(diff))}`,
+  };
+}
+
+// The same for a screen reader: "up 12%, 38 more than yesterday"; "" when there's nothing to compare with.
+export function changeWords(change: Change | null, label: string) {
+  if (!change) return '';
+  if (change.direction === 'flat') return `the same as ${label}`;
+  const how = `${formatNumber(Math.abs(change.diff))} ${change.diff > 0 ? 'more' : 'fewer'} than ${label}`;
+  return change.badge === 'new' ? `up from none, ${how}` : `${change.direction} ${change.badge}, ${how}`;
 }
 
 export const sumCounts = (counts: Partial<Record<string, number>>) =>

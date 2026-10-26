@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useApi } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, type Period } from '@/lib/format';
+import { formatNumber, periodParams, type Period } from '@/lib/format';
 import type { Course, Job, RoleJobsResponse } from '@/lib/types';
-import { contactSummary, ContactIcons } from './ContactForm';
-import { ExternalIcon, PulseIcon } from './Icons';
+import { useAccess } from './AuthGate';
+import { CONTACT_COLUMNS, hrHead } from './ContactCell';
+import { PulseIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
+import JobRow from './JobRow';
 import { CardHeader } from './PageParts';
 
 const PAGE_SIZE = 25;
@@ -23,8 +25,9 @@ interface Props {
 
 // A box with one role's openings in a period (the "SRE Openings" page: every Site Reliability Engineer
 // job), newest first, in the Filtered or Non-filtered jobs as the switch at the top says (each Non-filtered
-// one tagged with why); it says how many the other set has, and one click shows them. A job opens its
-// details window, where its HR details are added as anywhere else.
+// one tagged with why); it says how many the other set has, and one click shows them. Each job is a row
+// of the job list (JobRow): its HR contact and students are added and saved right in the row (the
+// pencil, then ✓ Save), and the company name opens its details window with everything else.
 export default function RoleOpenings({ role, title, noun, description, period, courses }: Props) {
   const [page, setPage] = useState(1);
   const { view, setView } = useDataView();
@@ -34,6 +37,10 @@ export default function RoleOpenings({ role, title, noun, description, period, c
   // Jobs saved in their details window since this list loaded, and the job whose window is open.
   const [saved, setSaved] = useState<Record<string, Job>>({});
   const [detail, setDetail] = useState<Job | null>(null);
+  const onSaved = (job: Job) => setSaved((rows) => ({ ...rows, [job._id]: job }));
+  // The HR cell being edited (one at a time), and whether this person may edit HR details.
+  const [editingCell, setEditingCell] = useState<{ jobId: string; column: string } | null>(null);
+  const mayEdit = useAccess()?.can('edit-hr-details') ?? false;
   // A new period, or the other set, starts again on page 1.
   const listKey = `${period.key}${period.from ?? ''}|${view}`;
   const [shownKey, setShownKey] = useState(listKey);
@@ -84,57 +91,29 @@ export default function RoleOpenings({ role, title, noun, description, period, c
       {data && data.total > 0 && (
         <>
           <div className={`table-wrap ${state.loading ? 'is-loading' : ''}`}>
-            <table className="data-table company-jobs-table role-table">
+            <table className="data-table jobs-table role-table">
               <thead>
                 <tr>
                   <th scope="col">Job</th>
                   <th scope="col">Experience</th>
-                  <th scope="col">Posted</th>
                   <th scope="col">Found on</th>
-                  <th scope="col">HR details</th>
+                  <th scope="col">Posted</th>
+                  {CONTACT_COLUMNS.map(hrHead)}
                 </tr>
               </thead>
               <tbody>
-                {items.map((job) => {
-                  const summary = contactSummary(job.contact);
-                  return (
-                    <tr key={job._id}>
-                      <td className="job-cell">
-                        <button type="button" className="company-job-open" onClick={() => setDetail(job)} aria-haspopup="dialog" title="Open: HR details, students, notes and job details">
-                          {job.title}
-                        </button>
-                        <span className="job-sub">
-                          {job.company || 'Company not shown'}
-                          {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
-                        </span>
-                        {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
-                      </td>
-                      <td className="nowrap">{formatExperience(job)}</td>
-                      <td className="nowrap muted">{formatPosted(job.postedAt ?? job.firstSeenAt)}</td>
-                      <td>
-                        <ul className="listings">
-                          {listingOrder(job).map((platform) => (
-                            <li key={platform}>
-                              <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={`Open on ${platform}`}>
-                                {platform}
-                                <ExternalIcon size={12} />
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td>
-                        {summary.any ? (
-                          <button type="button" className="contact-icons-btn" onClick={() => setDetail(job)} aria-haspopup="dialog" aria-label={`${summary.text}. Open ${job.title}`}>
-                            <ContactIcons contact={job.contact} />
-                          </button>
-                        ) : (
-                          <span className="muted">None yet</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {items.map((job) => (
+                  <JobRow
+                    key={job._id}
+                    job={job}
+                    expanded={false}
+                    onOpen={setDetail}
+                    mayEdit={mayEdit}
+                    editing={editingCell?.jobId === job._id ? editingCell.column : null}
+                    onEdit={(column) => setEditingCell(column ? { jobId: job._id, column } : null)}
+                    onSaved={onSaved}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -160,7 +139,7 @@ export default function RoleOpenings({ role, title, noun, description, period, c
           courses={courses}
           saved={saved}
           onClose={() => setDetail(null)}
-          onSaved={(job) => setSaved((rows) => ({ ...rows, [job._id]: job }))}
+          onSaved={onSaved}
           onOpenJob={(job) => setDetail(saved[job._id] ?? job)}
         />
       )}

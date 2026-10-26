@@ -1580,6 +1580,19 @@ button.kpi-total:hover .kpi-go {
   color: var(--bad-text);
 }
 
+/* In a dashboard tile: one compact line ("▲12%  +38 vs yesterday"), even "▼100%  −30 vs yesterday" in
+   the narrowest tile (155px wide on a laptop, 147px on a phone) */
+.kpi .delta {
+  gap: 5px;
+  font-size: 11px;
+}
+
+.kpi .delta-badge {
+  gap: 2px;
+  padding: 1px 5px;
+  font-size: 11px;
+}
+
 /* ---------- Cards ---------- */
 
 /* The content layer: a translucent material with a light top edge, over the canvas glow */

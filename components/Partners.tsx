@@ -3,9 +3,9 @@
 import { Fragment, useState, type CSSProperties, type MouseEvent } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDate, formatNumber, percent } from '@/lib/format';
-import type { CourseId, Meta, Partner, PartnersResponse } from '@/lib/types';
+import type { CourseId, Meta, Partner, PartnersResponse, RoleJobsResponse } from '@/lib/types';
 import CompanyJobs from './CompanyJobs';
-import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, PhoneIcon, SearchIcon } from './Icons';
+import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, LayersIcon, PhoneIcon, SearchIcon } from './Icons';
 import { CardHeader, Freshness, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
 const SHOWN = 25; // companies listed before "Show all"
@@ -18,6 +18,9 @@ const hasContact = (p: Partner) => p.phones.length > 0 || p.emails.length > 0;
 export default function Partners() {
   const meta = useApi<Meta>('meta');
   const state = useApi<PartnersResponse>('partners');
+  // ServiceNow Openings: how many jobs with ServiceNow in the title were found in the page's period (the
+  // server's config/roleBoxes.js), in the view's set like the rest of the page. Just the count.
+  const serviceNow = useApi<RoleJobsResponse>('role-jobs', { role: 'servicenow', days: state.data?.days, limit: 1 }, { auth: true, skip: !state.data });
   const apiUrl = useApiUrl();
   const [search, setSearch] = useState('');
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
@@ -62,7 +65,7 @@ export default function Partners() {
         </span>
       </PageHeader>
 
-      <section className="kpis kpis-3" aria-label="Summary">
+      <section className="kpis kpis-4" aria-label="Summary">
         <div className="kpi">
           <div className="kpi-top">
             <span className="kpi-badge" aria-hidden="true">
@@ -94,6 +97,16 @@ export default function Partners() {
             {formatNumber(withContact)} <span className="kpi-of">of {formatNumber(data.partners.length)}</span>
           </p>
           <p className="kpi-period">Add contacts in any course&apos;s job list</p>
+        </div>
+        <div className="kpi kpi-servicenow">
+          <div className="kpi-top">
+            <span className="kpi-badge" aria-hidden="true">
+              <LayersIcon size={16} />
+            </span>
+            <span className="kpi-name">ServiceNow Openings</span>
+          </div>
+          <p className="kpi-value">{serviceNow.data ? formatNumber(serviceNow.data.total) : '—'}</p>
+          <p className="kpi-period">{serviceNow.error ? 'Could not load the count' : 'with ServiceNow in the job title'}</p>
         </div>
       </section>
 

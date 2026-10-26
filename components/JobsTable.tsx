@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
 import { useAccess } from './AuthGate';
-import { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
+import { CONTACT_COLUMNS, EXTRA_COLUMNS, hrHead } from './ContactCell';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
 import { experienceBands, formatNumber, periodParams, periodQuery, type Period } from '@/lib/format';
@@ -39,15 +39,6 @@ function ContactProgress({ done, total }: { done: number; total: number }) {
   );
 }
 
-// The head of an HR details column, with its icon.
-const hrHead = (c: ContactColumn) => (
-  <th scope="col" key={c.key} className={`hr-head hr-${c.key}`}>
-    <span className="hr-head-label">
-      {c.icon}
-      {c.label}
-    </span>
-  </th>
-);
 
 // A filter that has no dropdown (set by a card or a chart): its name, and × to remove it.
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {

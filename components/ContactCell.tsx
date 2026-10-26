@@ -30,6 +30,16 @@ export const CONTACT_COLUMNS: ContactColumn[] = [
   { key: 'assignedTo', label: 'Assigned to', fields: ['assignedTo'], add: 'Assign students', icon: <UsersIcon size={13} /> },
 ];
 
+// The head of an HR details column, with its icon (the job list, the SRE Openings list).
+export const hrHead = (c: ContactColumn) => (
+  <th scope="col" key={c.key} className={`hr-head hr-${c.key}`}>
+    <span className="hr-head-label">
+      {c.icon}
+      {c.label}
+    </span>
+  </th>
+);
+
 // Expand adds these after its own columns. Notes are here (and in the details window), not in the
 // list as it opens, so the list fits the window without scrolling sideways.
 export const EXTRA_COLUMNS: ContactColumn[] = [

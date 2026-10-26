@@ -27,7 +27,7 @@ export default function SreOpenings() {
       <PageHeader
         eyebrow={`Production Support · ${period.label}`}
         title="SRE Openings"
-        subtitle="Every Site Reliability Engineer opening we found, in the Filtered or Non-filtered jobs (the switch at the top). Click a job to add its HR details."
+        subtitle="Every Site Reliability Engineer opening we found, in the Filtered or Non-filtered jobs (the switch at the top). Add each one's HR contact and students right in the list with the pencil."
         actions={
           <PeriodTabs
             period={period}

@@ -36,6 +36,7 @@ export interface Summary {
   to: string;
   current: CourseCounts;
   previous: CourseCounts;
+  comparable?: boolean; // the period before was collected every day too (else previous is {})
 }
 
 export interface PlatformRow {
@@ -204,6 +205,8 @@ export interface RoleJobsResponse {
   total: number;
   filtered: number;
   nonFiltered: number;
+  previous?: number | null; // the same count for the period before; null when it can't be compared
+  comparable?: boolean;
   page: number;
   pageSize: number;
   pages: number;
