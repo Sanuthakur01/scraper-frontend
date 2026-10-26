@@ -2,11 +2,9 @@ import type { ReactNode } from 'react';
 import { formatDateTime, formatUpdated } from '@/lib/format';
 import type { LastRun } from '@/lib/types';
 import { AlertIcon } from './Icons';
-import SreQuickLink from './SreQuickLink';
 
 // The top of a page: a small line above, a large title (no icon beside it, as on Apple's platforms),
-// one line of explanation, a row of small facts (freshness), and the page's controls on the right. The
-// "SRE Openings" link sits at its top right, under the Filtered / Non-filtered switch.
+// one line of explanation, a row of small facts (freshness), and the page's controls on the right.
 export function PageHeader({
   eyebrow,
   title,
@@ -22,7 +20,6 @@ export function PageHeader({
 }) {
   return (
     <header className="page-header">
-      <SreQuickLink />
       <div className="page-heading">
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>

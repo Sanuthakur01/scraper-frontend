@@ -9,6 +9,9 @@ export const COURSE_COLORS: Record<CourseId, string> = {
   'production-support': 'var(--series-4)',
 };
 
+// SRE Openings (a role, not a course): its own colour beside the four courses'.
+export const SRE_COLOR = 'var(--series-sre)';
+
 // The minimum experience of the jobs we keep: min years and up (max null = no upper limit).
 export interface ExperienceRange {
   min: number;

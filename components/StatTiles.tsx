@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, periodQuery, sumCounts, type Period } from '@/lib/format';
-import type { ApiState, Course, Summary } from '@/lib/types';
+import { changePercent, COURSE_COLORS, courseInitials, formatNumber, percent, periodQuery, SRE_COLOR, sumCounts, type Period } from '@/lib/format';
+import type { ApiState, Course, RoleJobsResponse, Summary } from '@/lib/types';
 import { ArrowRightIcon, TrendIcon } from './Icons';
 import { SectionError } from './PageParts';
 
@@ -27,12 +27,14 @@ interface Props {
   state: ApiState<Summary>;
   period: Period;
   onShowAll: () => void; // "All courses" was clicked: show every new job of the period
+  sre?: ApiState<RoleJobsResponse>; // the period's SRE openings: a sixth tile, opening the SRE Openings page
 }
 
 // The headline numbers: all courses together (it shows those jobs in the side panel), then one
 // colour-coded card per course (its share of all new jobs, the change vs the previous period when it
-// can be compared) that opens its page.
-export default function StatTiles({ courses, state, period, onShowAll }: Props) {
+// can be compared) that opens its page, and the SRE Openings tile (its share of Production Support)
+// that opens the SRE Openings page.
+export default function StatTiles({ courses, state, period, onShowAll, sre }: Props) {
   const current = state.data?.current ?? {};
   // Until the numbers arrive (first load, or after the Filtered / Non-filtered switch): a dash, never 0.
   const shown = (n: number) => (state.data ? formatNumber(n) : '—');
@@ -40,7 +42,7 @@ export default function StatTiles({ courses, state, period, onShowAll }: Props) 
   const total = sumCounts(current);
 
   return (
-    <section className={`kpis ${state.loading ? 'is-loading' : ''}`} aria-label="New jobs per course">
+    <section className={`kpis ${sre ? 'kpis-6' : ''} ${state.loading ? 'is-loading' : ''}`} aria-label="New jobs per course">
       {state.error && <SectionError what="the numbers" error={state.error} onRetry={state.reload} />}
       <button
         type="button"
@@ -92,6 +94,42 @@ export default function StatTiles({ courses, state, period, onShowAll }: Props) 
           </Link>
         );
       })}
+      {sre && <SreTile sre={sre} productionSupport={state.data ? (current['production-support'] ?? 0) : null} period={period} />}
     </section>
+  );
+}
+
+// The SRE Openings tile: the period's Site Reliability Engineer openings (in the view's set, as the page
+// shows them) and their share of Production Support's new jobs; it opens the SRE Openings page.
+function SreTile({ sre, productionSupport, period }: { sre: ApiState<RoleJobsResponse>; productionSupport: number | null; period: Period }) {
+  const count = sre.data?.total ?? 0;
+  const known = Boolean(sre.data);
+  const share = known && productionSupport ? percent(count, productionSupport) : null;
+  return (
+    <Link
+      className="kpi kpi-course kpi-sre"
+      href={`/sre?${periodQuery(period)}`}
+      style={{ '--course': SRE_COLOR } as CSSProperties}
+      aria-label={`SRE Openings: ${known ? formatNumber(count) : 'loading'} openings${share ? `, ${share} of Production Support` : ''}. Open the SRE Openings page`}
+    >
+      <div className="kpi-top">
+        <span className="kpi-badge" aria-hidden="true">
+          SRE
+        </span>
+        <span className="kpi-name">SRE Openings</span>
+        <span className="kpi-go" aria-hidden="true">
+          <ArrowRightIcon size={16} />
+        </span>
+      </div>
+      <p className="kpi-value">{known ? formatNumber(count) : '—'}</p>
+      {share && (
+        <div className="kpi-share" title={`${share} of Production Support's ${formatNumber(productionSupport ?? 0)} new jobs`}>
+          <span className="kpi-share-track" aria-hidden="true">
+            <span style={{ width: `${Math.min(100, (count / (productionSupport || 1)) * 100)}%` }} />
+          </span>
+          {share} of PS
+        </div>
+      )}
+    </Link>
   );
 }

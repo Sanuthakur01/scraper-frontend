@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useApi } from '@/lib/api';
 import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/lib/format';
 import type { ShowJobs } from '@/lib/jobFilters';
-import type { InsightsResponse, Meta, PlatformsResponse, Summary, TrendsResponse } from '@/lib/types';
+import type { InsightsResponse, Meta, PlatformsResponse, RoleJobsResponse, Summary, TrendsResponse } from '@/lib/types';
 import GlobalSearch from './GlobalSearch';
 import { LayersIcon, TrendIcon } from './Icons';
 import Insights from './Insights';
@@ -79,6 +79,8 @@ export default function Dashboard() {
   const platforms = useApi<PlatformsResponse>('platforms', range);
   const trends = useApi<TrendsResponse>('trends', { days: 30 });
   const insights = useApi<InsightsResponse>('insights', range);
+  // The SRE Openings tile: just the count (one job's worth of list).
+  const sre = useApi<RoleJobsResponse>('role-jobs', { role: 'sre', ...range, limit: 1 }, { auth: true });
 
   if (meta.error) return <PageError title="Could not reach the server" error={meta.error} />;
   if (!meta.data) return <PageSkeleton />;
@@ -111,7 +113,7 @@ export default function Dashboard() {
 
       <GlobalSearch courses={courses} />
 
-      <StatTiles courses={courses} state={summary} period={period} onShowAll={() => showJobs({}, 'All new jobs')} />
+      <StatTiles courses={courses} state={summary} period={period} onShowAll={() => showJobs({}, 'All new jobs')} sre={sre} />
 
       <PageSection title="Market activity">
         <div className="grid-2">
