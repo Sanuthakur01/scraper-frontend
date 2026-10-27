@@ -2,7 +2,7 @@
 
 import { Fragment, useState, type CSSProperties, type MouseEvent } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatDate, formatNumber, percent } from '@/lib/format';
+import { COURSE_COLORS, formatDate, formatNumber, percent, shownCities } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse, RoleJobsResponse } from '@/lib/types';
 import CompanyJobs from './CompanyJobs';
 import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, LayersIcon, PhoneIcon, SearchIcon } from './Icons';
@@ -170,7 +170,7 @@ export default function Partners() {
                         ) : (
                           <span className="job-title">{p.name}</span>
                         )}
-                        <span className="job-sub">{p.cities.length ? p.cities.join(', ') : 'City not shown'}</span>
+                        <span className="job-sub">{shownCities(p.cities).length ? shownCities(p.cities).join(', ') : 'City not shown'}</span>
                       </th>
                       <td className="num">
                         <span className="cell-bar">

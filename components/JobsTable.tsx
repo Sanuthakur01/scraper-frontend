@@ -5,7 +5,7 @@ import { useAccess } from './AuthGate';
 import { CONTACT_COLUMNS, EXTRA_COLUMNS, hrHead } from './ContactCell';
 import { useApi, useApiUrl } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { experienceBands, formatNumber, periodParams, periodQuery, type Period } from '@/lib/format';
+import { experienceBands, formatNumber, isShownCity, periodParams, periodQuery, type Period } from '@/lib/format';
 import { filterChips, type JobFilters, type JobFilterState } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse, Meta } from '@/lib/types';
 import {
@@ -96,12 +96,12 @@ interface Props {
 // The job list: search and filters, one row per job (each job once, however many sites list it).
 // "HR contact" (names, numbers, emails) and "Assigned to" are edited in place with the pencil; clicking a
 // company name opens the job's details window with everything about it. It fits a laptop's width as it
-// opens; Expand adds salary, skills, work mode, notes and more, and ← → scroll to them. On phones each
+// opens; Expand adds salary, skills, notes and more, and ← → scroll to them. On phones each
 // job is a card.
 export default function JobsTable({ courses, meta, period, filterState, lockedCourse, title = 'Jobs' }: Props) {
   const { filters, setFilters, search, setSearch, show } = filterState;
   const [page, setPage] = useState(1);
-  // Expand: also show salary, skills, work mode and when we found each job.
+  // Expand: also show salary, skills and when we found each job.
   const [expanded, setExpanded] = useState(false);
   // Rows as saved since this list loaded (HR contact typed in), shown instead of the loaded copy.
   const [savedRows, setSavedRows] = useState<Record<string, Job>>({});
@@ -201,7 +201,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
         </select>
         <select className="select" value={filters.city} onChange={setFilter('city')} aria-label="City">
           <option value="">All cities</option>
-          {withValue(meta.cities, filters.city).map((city) => (
+          {withValue(meta.cities.filter(isShownCity), filters.city).map((city) => (
             <option key={city}>{city}</option>
           ))}
         </select>
@@ -268,7 +268,6 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
                 <>
                   <th scope="col">Salary</th>
                   <th scope="col">Skills</th>
-                  <th scope="col">Work mode</th>
                   <th scope="col">Found by us</th>
                   {EXTRA_COLUMNS.map(hrHead)}
                 </>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder } from '@/lib/format';
+import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder, shownCities } from '@/lib/format';
 import type { Job } from '@/lib/types';
 import ContactCell, { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
 import { contactSummary, ContactIcons } from './ContactForm';
@@ -45,7 +45,7 @@ function Skills({ skills, jobTitle }: { skills: string[]; jobTitle: string }) {
 interface Props {
   job: Job;
   courseName?: string; // shown under the title when the list has several courses
-  expanded: boolean; // also show salary, skills, work mode, when we found it, notes and HR profile links
+  expanded: boolean; // also show salary, skills, when we found it, notes and HR profile links
   onOpen: (job: Job) => void; // the company name was clicked: open the job's details window
   mayEdit: boolean; // the signed-in person's role may edit HR details
   editing: string | null; // the key of the HR column being edited in this row, if any
@@ -94,7 +94,7 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           >
             {company}
           </button>
-          {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
+          {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''}
         </span>
         {(job.leftOutBy || summary.any) && (
           <span className="job-tags">
@@ -141,9 +141,6 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           </td>
           <td className="extra-cell skills-cell" data-label="Skills">
             <Skills skills={job.skills ?? []} jobTitle={job.title} />
-          </td>
-          <td className="nowrap" data-label="Work mode">
-            {job.isRemote ? 'Remote' : 'On-site'}
           </td>
           <td className="nowrap muted" data-label="Found by us">
             {formatDate(job.firstSeenAt)}

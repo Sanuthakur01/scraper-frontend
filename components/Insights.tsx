@@ -1,5 +1,5 @@
 import { useState, type FocusEvent, type MouseEvent } from 'react';
-import { experienceBands, formatNumber, percent, type ExperienceRange } from '@/lib/format';
+import { experienceBands, formatNumber, isShownCity, percent, type ExperienceRange } from '@/lib/format';
 import { useDataView } from '@/lib/dataView';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { ApiState, Course, InsightsResponse, NamedCount } from '@/lib/types';
@@ -239,9 +239,9 @@ export default function Insights({
       <section className="card">
         <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where the new openings are" />
         <RankList
-          items={data?.cities ?? []}
+          items={(data?.cities ?? []).filter((city) => isShownCity(city.name))}
           courses={courses}
-          onSelect={(item) => onSelect({ city: item.name }, item.name === 'Remote' ? 'Remote jobs' : `Jobs in ${item.name}`)}
+          onSelect={(item) => onSelect({ city: item.name }, `Jobs in ${item.name}`)}
         />
       </section>
       <section className="card card-grow">

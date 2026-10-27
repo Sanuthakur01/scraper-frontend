@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
-import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, periodParams, type ExperienceRange, type Period } from '@/lib/format';
+import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, periodParams, shownCities, type ExperienceRange, type Period } from '@/lib/format';
 import { useDataView } from '@/lib/dataView';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
@@ -189,7 +189,7 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
                             </a>
                             <span className="job-sub">
                               {job.company || 'Company not shown'}
-                              {job.cities.length ? ` · ${job.cities.join(', ')}` : ''} · {job.platform}
+                              {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''} · {job.platform}
                             </span>
                           </div>
                           <span className="plan-job-needs">needs {job.missing.join(', ')}</span>

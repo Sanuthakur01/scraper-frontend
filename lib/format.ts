@@ -9,6 +9,13 @@ export const COURSE_COLORS: Record<CourseId, string> = {
   'production-support': 'var(--series-4)',
 };
 
+// Cities the dashboard doesn't show (user request, 27 Oct 2026): a remote job that names no city is
+// stored with the city "Remote"; the job keeps it, but city lists and job details leave it out (the
+// server's city rankings do too: HIDDEN_CITIES in server/src/normalize.js).
+const HIDDEN_CITIES = ['Remote'];
+export const isShownCity = (city: string): boolean => !HIDDEN_CITIES.includes(city);
+export const shownCities = (cities: string[] | undefined | null): string[] => (cities ?? []).filter(isShownCity);
+
 // SRE Openings (a role, not a course): its own colour beside the four courses'.
 export const SRE_COLOR = 'var(--series-sre)';
 

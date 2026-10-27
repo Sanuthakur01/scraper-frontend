@@ -667,39 +667,6 @@ optgroup {
   box-shadow: 0 0 0 1px var(--warn-border);
 }
 
-/* Under the top bar while Non-filtered data is shown */
-/* A rounded strip under the floating top bar, as wide as it */
-.view-note {
-  width: calc(100% - 2 * var(--space-6));
-  max-width: calc(1240px - 2 * var(--space-6));
-  margin: var(--space-3) auto 0;
-  border: 1px solid var(--warn-border);
-  border-radius: var(--radius);
-  background: var(--warn-bg);
-  color: var(--warn-text);
-}
-
-.view-note-inner {
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px 12px;
-  font-size: var(--text-footnote);
-}
-
-.view-note-inner > svg {
-  flex: none;
-}
-
-.view-note-inner p {
-  flex: 1;
-  min-width: 0;
-}
-
-.view-note-inner .btn {
-  flex: none;
-}
-
 /* Why a Non-filtered job is left out, on its row and in the panel */
 .reason-pill {
   display: inline-flex;
@@ -6455,9 +6422,6 @@ html:has(.job-modal[open]) {
     margin-top: var(--space-2);
     border-radius: var(--radius);
   }
-  .view-note {
-    width: calc(100% - 2 * var(--space-2));
-  }
   .app-header-inner {
     flex-wrap: wrap;
     height: auto;
@@ -6511,16 +6475,6 @@ html:has(.job-modal[open]) {
 }
 
 @media (max-width: 640px) {
-  .view-note-inner {
-    flex-wrap: wrap;
-    padding: 12px 16px;
-  }
-  .view-note-inner p {
-    flex-basis: calc(100% - 28px); /* the button goes under the text */
-  }
-  .view-note-inner .btn {
-    margin-left: 28px;
-  }
   .app-footer-inner {
     padding: var(--space-4) var(--space-4) 88px;
   }

@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
-import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder } from '@/lib/format';
+import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, shownCities } from '@/lib/format';
 import type { CompanyJobsResponse, Course, CourseId, Job } from '@/lib/types';
 import { contactSummary, ContactIcons } from './ContactForm';
 import { ExternalIcon } from './Icons';
@@ -94,7 +94,7 @@ export default function CompanyJobs({ companyKey, courses, days, all = false, la
                     </button>
                     <span className="job-sub">
                       {job.company || 'Company not shown'}
-                      {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
+                      {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''}
                     </span>
                     {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
                   </td>

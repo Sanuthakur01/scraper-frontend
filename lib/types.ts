@@ -92,7 +92,6 @@ export interface CourseDetailResponse {
   postingAge: Partial<Record<PostingAgeBucket, number>>;
   experience: Record<string, number>;
   salaryShown: number;
-  remote: number;
   companies: NamedCount[];
   cities: NamedCount[];
   skills: NamedCount[];
@@ -152,7 +151,6 @@ export interface Job {
   company?: string;
   course: CourseId;
   cities?: string[];
-  isRemote?: boolean;
   experienceMin?: number | null;
   experienceMax?: number | null;
   experienceText?: string;

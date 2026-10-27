@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import AppHeader from '@/components/AppHeader';
 import AiChat from '@/components/AiChat';
 import AuthGate from '@/components/AuthGate';
-import { NonFilteredNote } from '@/components/DataViewToggle';
 import { DataViewProvider } from '@/lib/dataView';
 import './globals.css';
 
@@ -30,7 +29,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <AuthGate>
           <DataViewProvider>
             <AppHeader />
-            <NonFilteredNote />
             {children}
             <AiChat />
           </DataViewProvider>

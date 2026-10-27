@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, type Period } from '@/lib/format';
+import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, shownCities, type Period } from '@/lib/format';
 import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
 import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
@@ -108,7 +108,7 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                     >
                       {job.company || 'Company not shown'}
                     </button>
-                    {job.cities?.length ? ` · ${job.cities.join(', ')}` : ''}
+                    {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''}
                   </span>
                   <div className="drawer-job-meta">
                     {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}

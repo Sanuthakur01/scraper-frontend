@@ -13,6 +13,7 @@ import {
   formatUpdated,
   LEFT_OUT_LABELS,
   listingOrder,
+  shownCities,
 } from '@/lib/format';
 import type { Course, FollowUpInput, Job, JobsResponse } from '@/lib/types';
 import {
@@ -227,7 +228,7 @@ function CompanyOpenings({
                       <span className="dot" style={{ background: COURSE_COLORS[o.course] }} aria-hidden="true" />
                       {courseName[o.course]}
                     </span>
-                    {o.cities?.length ? ` · ${o.cities.join(', ')}` : ''} · {formatPosted(o.postedAt ?? o.firstSeenAt)}
+                    {shownCities(o.cities).length ? ` · ${shownCities(o.cities).join(', ')}` : ''} · {formatPosted(o.postedAt ?? o.firstSeenAt)}
                   </span>
                 </span>
                 <ContactIcons contact={o.contact} />
@@ -450,7 +451,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                 </span>
               )}
               <span className="meta-pill">
-                <MapPinIcon size={12} /> {job.cities?.length ? job.cities.join(', ') : 'City not shown'}
+                <MapPinIcon size={12} /> {shownCities(job.cities).length ? shownCities(job.cities).join(', ') : 'City not shown'}
               </span>
               <span className="meta-pill">
                 <BriefcaseIcon size={12} /> {formatExperience(job)}
@@ -705,7 +706,6 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
               <SectionHead icon={<BriefcaseIcon size={16} />} id={factsId} title="Job details" />
               <dl className="fact-list">
                 <Fact label="Salary">{job.salaryText || 'Not shown'}</Fact>
-                <Fact label="Work mode">{job.isRemote ? 'Remote' : 'On-site'}</Fact>
                 <Fact label="Posted on the site">
                   {job.postedAt ? <span title={formatDateTime(job.postedAt)}>{formatPosted(job.postedAt)}</span> : 'Date not shown'}
                 </Fact>

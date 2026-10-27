@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatDay } from './format';
+import { formatDay, isShownCity } from './format';
 
 // The job list's filters, sent to GET /api/jobs (and jobs.csv) as they are. '' = not filtered. Each one
 // is counted on the server the same way as the number it was clicked from (a card, a bar, a day), so
@@ -43,7 +43,7 @@ export function filtersFromAddress(params: { get(name: string): string | null })
   for (const key of Object.keys(NO_FILTERS) as (keyof JobFilters)[]) {
     if (key === 'course') continue;
     const value = params.get(key);
-    if (value) found[key] = value;
+    if (value && !(key === 'city' && !isShownCity(value))) found[key] = value; // never a hidden city ("Remote")
   }
   return found;
 }

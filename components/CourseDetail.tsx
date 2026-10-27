@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useApi } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, percent, periodFrom, periodParams, periodQuery } from '@/lib/format';
+import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, isShownCity, percent, periodFrom, periodParams, periodQuery } from '@/lib/format';
 import { filtersFromAddress, POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
 import type { CourseDetailResponse, CourseId, Meta, PostingAgeBucket, TrendsResponse } from '@/lib/types';
 import {
@@ -310,7 +310,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
           </section>
           <section className="card">
             <CardHeader level={3} icon={<MapPinIcon />} title="Top cities" description="Where these openings are" />
-            <RankList items={d.cities} color={color} selected={jobFilters.filters.city} onSelect={(item) => showJobs({ city: item.name })} />
+            <RankList items={d.cities.filter((city) => isShownCity(city.name))} color={color} selected={jobFilters.filters.city} onSelect={(item) => showJobs({ city: item.name })} />
           </section>
           <section className="card card-grow">
             <CardHeader level={3} icon={<BriefcaseIcon />} title="Experience asked for" description="Minimum years in the job post (5+ = more than 5)" />

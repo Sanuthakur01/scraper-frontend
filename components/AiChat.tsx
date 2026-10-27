@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ApiError, apiUrl, useApi } from '@/lib/api';
 import { ask, chatApi, pageContext } from '@/lib/chat';
 import { useDataView } from '@/lib/dataView';
-import { COURSE_COLORS, formatDate, formatNumber, formatUpdated } from '@/lib/format';
+import { COURSE_COLORS, formatDate, formatNumber, formatUpdated, shownCities } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
 import type { ChatAction, ChatCard, ChatMessage, ChatReminder, ChatSummary, ChatUsage, Course, Job, JobsResponse, Meta } from '@/lib/types';
 import { useAccess } from './AuthGate';
@@ -529,7 +529,7 @@ function Card({ card, courses, onOpenJob, onLink }: { card: ChatCard; courses: C
                   <strong>{j.title}</strong>
                   <span className="muted">
                     {j.company}
-                    {j.cities.length ? ` · ${j.cities.join(', ')}` : ''}
+                    {shownCities(j.cities).length ? ` · ${shownCities(j.cities).join(', ')}` : ''}
                   </span>
                 </button>
               </li>
