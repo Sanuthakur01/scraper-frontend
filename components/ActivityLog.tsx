@@ -115,9 +115,11 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
               <span className="change-field">
                 {FIELDS[change.field].icon} {FIELDS[change.field].label}
                 {change.contact && (
-                  <span className="change-contact" title={`For ${change.contact.value}`}>
+                  <span className="change-contact" title={`For ${change.contact.value}${change.contact.student ? `, ${change.contact.student}'s call` : ''}`}>
                     {change.contact.field === 'phone' ? <PhoneIcon size={11} /> : <MailIcon size={11} />}
                     {change.contact.value}
+                    {/* A remark: whose call it was (a number can be with several students). */}
+                    {change.field === 'contactRemark' && change.contact.student && <span className="change-student">· {change.contact.student}</span>}
                   </span>
                 )}
               </span>

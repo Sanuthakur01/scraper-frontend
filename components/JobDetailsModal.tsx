@@ -80,7 +80,7 @@ const companyInitials = (name?: string) =>
 
 // Copies text. While a window is open the rest of the page can't be used, so the fallback (no
 // clipboard access, e.g. not https) works inside that window.
-async function copyText(text: string, from: HTMLElement) {
+export async function copyText(text: string, from: HTMLElement) {
   try {
     await navigator.clipboard.writeText(text);
     return true;

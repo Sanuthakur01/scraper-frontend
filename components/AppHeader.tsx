@@ -6,16 +6,17 @@ import { useAccess, UserMenu } from './AuthGate';
 import DataViewToggle from './DataViewToggle';
 import ThemeToggle from './ThemeToggle';
 
-// short: the label on narrower screens and phones, where the full labels don't fit in one row. The tabs
-// are words only: with icons too, a longer role badge ("Research team") pushed "Activity" out of the bar.
+// short: the tab's label (the five pages' full names don't fit the bar at any width; label is its title,
+// shown on hover). The tabs are words only: with icons too, a longer role badge pushed tabs out of the bar.
 const PAGES: { href: string; label: string; short: string; matches: (path: string) => boolean }[] = [
   { href: '/', label: 'Dashboard', short: 'Dashboard', matches: (path) => path === '/' || path.startsWith('/course') },
   { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
   { href: '/partners', label: 'Hiring partners', short: 'Partners', matches: (path) => path.startsWith('/partners') },
   { href: '/activity', label: 'Activity', short: 'Activity', matches: (path) => path.startsWith('/activity') },
+  { href: '/review', label: 'Review board', short: 'Review', matches: (path) => path.startsWith('/review') || path.startsWith('/assign') },
 ];
 
-// The bar across the top of every page: the product name, the four main pages, light/dark, the
+// The bar across the top of every page: the product name, the five main pages, light/dark, the
 // signed-in person's role and account menu (profile, sign out), and the Filtered / Non-filtered switch
 // (on phones it gets a row of its own).
 export default function AppHeader() {
@@ -35,9 +36,8 @@ export default function AppHeader() {
         </Link>
         <nav className="app-nav" aria-label="Pages">
           {PAGES.map((page) => (
-            <Link key={page.href} href={page.href} aria-current={page.matches(path) ? 'page' : undefined}>
-              <span className="label-long">{page.label}</span>
-              <span className="label-short">{page.short}</span>
+            <Link key={page.href} href={page.href} aria-current={page.matches(path) ? 'page' : undefined} title={page.label}>
+              {page.short}
             </Link>
           ))}
         </nav>

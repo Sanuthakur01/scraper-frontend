@@ -145,6 +145,17 @@ export const courseInitials = (name: string) =>
 
 export const percent = (part: number, whole: number) => (whole ? `${Math.round((part / whole) * 100)}%` : '—');
 
+// A share that is often small (HR details on new jobs): one decimal under 10% ("6.6%", so 0.4% is not "0%";
+// "9.0%" beside "6.8%"), whole from 10%; "0%" for none; "<0.1%" for a few among many; "—" when there is nothing
+// to share.
+export const shareText = (part: number, whole: number) => {
+  if (!whole) return '—';
+  if (!part) return '0%';
+  const pct = (part / whole) * 100;
+  if (pct < 0.1) return '<0.1%';
+  return `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%`;
+};
+
 const numberFormat = new Intl.NumberFormat('en-IN');
 export const formatNumber = (n: number | null | undefined) => numberFormat.format(n ?? 0);
 

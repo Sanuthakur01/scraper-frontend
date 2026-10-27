@@ -5,7 +5,7 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "test": "node --test lib/access.test.mjs lib/format.test.mjs lib/performance.test.mjs lib/markdown.test.mjs lib/emailKey.test.mjs"
+    "test": "node --test lib/access.test.mjs lib/format.test.mjs lib/performance.test.mjs lib/markdown.test.mjs lib/emailKey.test.mjs lib/review.test.mjs"
   },
   "dependencies": {
     "@clerk/react": "6.17.7",

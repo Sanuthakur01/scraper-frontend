@@ -7,6 +7,7 @@ import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/li
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { InsightsResponse, Meta, PlatformsResponse, RoleJobsResponse, Summary, TrendsResponse } from '@/lib/types';
 import GlobalSearch from './GlobalSearch';
+import HrDetails from './HrDetails';
 import { LayersIcon, TrendIcon } from './Icons';
 import Insights from './Insights';
 import JobsDrawer, { type JobsView } from './JobsDrawer';
@@ -114,6 +115,10 @@ export default function Dashboard() {
       <GlobalSearch courses={courses} />
 
       <StatTiles courses={courses} state={summary} period={period} onShowAll={() => showJobs({}, 'All new jobs')} sre={sre} />
+
+      <PageSection title="HR contacts">
+        <HrDetails courses={courses} state={summary} onSelect={showJobs} />
+      </PageSection>
 
       <PageSection title="Market activity">
         <div className="grid-2">

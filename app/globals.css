@@ -579,10 +579,6 @@ optgroup {
   display: inline-flex;
 }
 
-.label-short {
-  display: none;
-}
-
 .app-header-end {
   margin-left: auto;
   display: flex;
@@ -1476,6 +1472,181 @@ button.kpi-action:not([aria-pressed='true']):hover .kpi-cta svg {
   border-radius: 999px;
   background: var(--course);
   box-shadow: 0 0 10px color-mix(in srgb, var(--course) var(--kpi-glow), transparent);
+}
+
+/* ---------- HR contacts: new jobs with and without HR details (HrDetails) ---------- */
+
+/* The two totals on the left, each course on the right (one column on narrow screens) */
+.hr-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Stacked beside the courses; side by side when the card is one column (under 900px) */
+.hr-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* A total that opens its jobs: like a tile, in the colour of what it counts */
+.hr-stat {
+  --tone: var(--accent);
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--tone) 9%, var(--surface-2));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hr-stat.is-without {
+  --tone: var(--text-muted);
+}
+
+.hr-stat:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tone) 16%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
+}
+
+.hr-stat:disabled {
+  cursor: default;
+}
+
+.hr-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.hr-stat.is-with .hr-stat-label svg {
+  color: var(--accent-text);
+}
+
+.hr-stat-value {
+  font-size: var(--text-title1);
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hr-stat-note {
+  font-size: var(--text-footnote);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each course: its name and share, a bar filled as far as it has HR details, and the two counts */
+.hr-courses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.hr-course {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.hr-course-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hr-course-name .kpi-badge {
+  width: 28px;
+  height: 28px;
+  font-size: 10px;
+}
+
+.hr-course-share {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.hr-course-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--course) 16%, var(--surface-2));
+  overflow: hidden;
+}
+
+.hr-course-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--course);
+}
+
+.hr-course-counts {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.hr-course-counts button {
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-footnote);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.hr-course-counts strong {
+  color: var(--text-primary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.hr-course-counts button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.hr-course-counts button:disabled {
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .hr-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hr-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .hr-totals {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .kpi-cta {
@@ -3765,10 +3936,21 @@ button.rank-row:disabled {
 
 /* ---------- Performance report: follow-up of each number/email (student + remark, saved in place) ---------- */
 
-.perf-table.with-followup th:nth-last-child(-n + 2),
-.perf-table.with-followup td:nth-last-child(-n + 2) {
+.perf-table.with-followup thead th:nth-last-child(-n + 2),
+.perf-table.with-followup .perf-row td:nth-last-child(-n + 2),
+.perf-table.with-followup tfoot td:nth-last-child(-n + 2) {
   width: 200px;
   min-width: 200px;
+}
+
+/* A number's follow-ups span both columns; the gap (two cells' padding) keeps them under their headings */
+.perf-table.with-followup .perf-leaf td.followup-cell {
+  width: auto;
+}
+
+.perf-leaf .followup-cell .followups {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 32px;
 }
 
 .perf-table.with-followup th[scope='row'] {
@@ -3797,16 +3979,12 @@ button.rank-row:disabled {
 
 /* Narrow screens: the follow-up under the number/email */
 .leaf-followup {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 8px;
   margin-top: 8px;
   padding-left: calc(var(--depth, 0) * 22px + 28px);
 }
 
-.leaf-followup .student-input {
-  width: 180px;
+.leaf-followup .followups {
+  max-width: 460px;
 }
 
 .followup-input {
@@ -3836,6 +4014,11 @@ button.rank-row:disabled {
 .student-input {
   width: 100%;
   border-style: dashed;
+}
+
+/* "+ Another student": quieter than the first */
+.student-input.another {
+  background: transparent;
 }
 
 .student-input.has-value,
@@ -3934,6 +4117,21 @@ button.rank-row:disabled {
   color: var(--good-text);
 }
 
+/* Nothing to say: no room taken (a lone remark box stays level with its student box) */
+.save-mark:empty {
+  display: none;
+}
+
+/* The drill-down's narrow columns: saving and saved by their icon alone (the words stay for screen readers) */
+.perf-leaf .followup-cell .save-mark:not(.failed) .save-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .save-mark.failed {
   color: var(--bad-text);
   white-space: normal;
@@ -3944,6 +4142,79 @@ button.rank-row:disabled {
   height: 11px;
   border-color: var(--border-strong);
   border-top-color: var(--accent);
+}
+
+/* One number's follow-ups, in two columns: each student it was given to (× takes it back) with the remark on
+   their call; then a box to give it to another student too */
+.followups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.fu-row {
+  display: contents;
+}
+
+.fu-student,
+.fu-remark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fu-remark {
+  flex-wrap: wrap;
+}
+
+.fu-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  height: 32px;
+  padding: 0 3px 0 12px;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.fu-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fu-remove {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.fu-remove:hover {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.fu-remove:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* "All contacts": every number/email once, as rows of a grid (stacked on phones) */
@@ -4086,9 +4357,15 @@ button.rank-row:disabled {
   line-height: 1.4;
 }
 
-.ci-student,
-.ci-remark {
-  min-width: 0;
+/* The follow-ups take the last two columns ("Assigned to", "Remark") and line up with them */
+.contact-item > .ci-followups {
+  grid-column: span 2;
+  grid-template-columns: subgrid;
+}
+
+/* The activity record: whose call a remark was */
+.change-student {
+  color: var(--text-muted);
 }
 
 /* The activity record: which number or email a follow-up change is about */
@@ -4148,10 +4425,344 @@ button.rank-row:disabled {
   .contact-item {
     grid-template-columns: minmax(0, 1fr);
   }
-  .leaf-followup .student-input,
+  /* Each student's name, then the remark on their call under it, full width; a little more room between students */
+  .followups,
+  .contact-item > .ci-followups,
+  .perf-leaf .followup-cell .followups {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+  .fu-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
   .remark-field .remark-select {
     width: 100%;
     flex: 1 1 100%;
+  }
+}
+
+/* ---------- Assign numbers (/assign): the numbers no student has yet ---------- */
+
+/* Numbers given out here stay in the list (to add another student, or put a name right) until a filter changes */
+.assign-given {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 24px 12px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--good-bg);
+  color: var(--good-text);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+}
+
+.assign-given .btn {
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .assign-given {
+    margin: 0 16px 12px;
+  }
+}
+
+/* Yesterday's unanswered calls (DNP, Busy, Switched off): an amber notice above the list, to try them again */
+.retry-card {
+  gap: 12px;
+  padding: 16px 24px;
+  border-color: var(--warn-border);
+  background: color-mix(in srgb, var(--warn-bg) 55%, var(--surface-solid));
+}
+
+/* Nothing to call again, still loading, or not loaded: one quiet line */
+.retry-card.is-quiet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 24px;
+  border-color: var(--material-border);
+  background: var(--material-sheen), var(--material);
+  font-size: var(--text-footnote);
+  color: var(--text-secondary);
+}
+
+.retry-card.is-quiet > svg {
+  flex: none;
+  color: var(--good-text);
+}
+
+.retry-skeleton {
+  width: min(420px, 100%);
+  height: 14px;
+}
+
+.retry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+
+.retry-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-sm);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.retry-titles {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.retry-titles h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.retry-titles p {
+  margin: 2px 0 0;
+  font-size: var(--text-footnote);
+  color: var(--text-secondary);
+}
+
+.retry-copy {
+  gap: 6px;
+}
+
+.retry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--warn-border);
+}
+
+.retry-item {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.1fr) minmax(200px, 1.8fr) minmax(120px, 1fr) minmax(150px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--warn-border) 55%, transparent);
+  font-size: var(--text-footnote);
+}
+
+.retry-item:last-child {
+  border-bottom: 0;
+}
+
+.retry-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.retry-contact .perf-value {
+  overflow-wrap: anywhere;
+}
+
+.retry-job {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.retry-course {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  color: var(--text-muted);
+}
+
+.retry-who {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.retry-remark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.retry-more {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .retry-card {
+    padding: 16px;
+  }
+  .retry-icon {
+    display: none;
+  }
+  .retry-card.is-quiet {
+    padding: 12px 16px;
+  }
+  .retry-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 0;
+  }
+  .retry-item .retry-contact,
+  .retry-item .retry-job {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Ticking numbers to copy them together: a tick box before each number, the header's ticks all shown */
+.ci-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.contact-item.is-selected {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.contact-item.is-selected:hover {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+/* While any are ticked: a bar floating at the bottom (centred; beside IJF AI's button on smaller screens) */
+.selection-bar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  z-index: 40; /* under IJF AI's button (45) and panel (50) */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-footnote);
+  transform: translateX(-50%);
+  animation: selection-in 0.18s ease-out;
+}
+
+.selection-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.selection-copy {
+  gap: 6px;
+}
+
+/* "Copied…": a small bubble just above the bar, so the bar keeps its size */
+.selection-note {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--good-text) 28%, transparent);
+  border-radius: 999px;
+  background: var(--good-bg);
+  color: var(--good-text);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transform: translateX(-50%);
+}
+
+.selection-note.failed {
+  border-color: color-mix(in srgb, var(--bad-text) 28%, transparent);
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
+
+.selection-note:empty {
+  display: none;
+}
+
+@keyframes selection-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+@media (max-width: 899px) {
+  .selection-bar {
+    left: 16px;
+    right: 84px;
+    width: auto;
+    max-width: none;
+    transform: none;
+    animation-name: selection-in-narrow;
+  }
+}
+
+/* Phones: just the count (the copy button says how many contacts) */
+@media (max-width: 480px) {
+  .selection-count .muted {
+    display: none;
+  }
+}
+
+@keyframes selection-in-narrow {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-bar {
+    animation: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .ci-check {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* The Review board's way in: on phones, a full-width button above the period choices */
+@media (max-width: 640px) {
+  .page-actions:has(> .assign-link) {
+    flex-wrap: wrap;
+  }
+  .page-actions > .assign-link {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 }
 
@@ -6036,10 +6647,13 @@ html:has(.job-modal[open]) {
   min-height: 32px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1200px) {
   .role-badge {
     display: none; /* the account menu still shows who is signed in */
   }
+}
+
+@media (max-width: 640px) {
   .auth-screen {
     padding: 28px 12px;
   }
@@ -6376,13 +6990,8 @@ html:has(.job-modal[open]) {
   .app-header-inner {
     gap: var(--space-4);
   }
-  .nav-icon,
-  .label-long,
-  .role-badge {
+  .nav-icon {
     display: none;
-  }
-  .label-short {
-    display: inline;
   }
   .kpis {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -6609,6 +7218,14 @@ html:has(.job-modal[open]) {
   .cell-edit {
     width: 36px;
     height: 36px;
+  }
+  /* Taking a number back from a student: as tall as the chip it sits in */
+  .fu-chip {
+    padding-right: 1px;
+  }
+  .fu-remove {
+    width: 30px;
+    height: 30px;
   }
   .icon-btn.drawer-close,
   .icon-btn.job-modal-close {
@@ -8024,5 +8641,390 @@ html:has(.job-modal[open]) {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Review board (ReviewBoard): how the HR contacts given to students turned out ---------- */
+
+/* A remark as a small coloured label, in the follow-up's tones */
+.remark-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--text-caption);
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remark-chip.tone-good {
+  background: var(--good-bg);
+  color: var(--good-text);
+  border-color: color-mix(in srgb, var(--good-text) 35%, transparent);
+}
+
+.remark-chip.tone-warn {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-color: var(--warn-border);
+}
+
+.remark-chip.tone-bad {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+  border-color: color-mix(in srgb, var(--bad-text) 35%, transparent);
+}
+
+.remark-chip.tone-neutral {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.remark-chip.tone-accent {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Bars: each remark (or each speed of feedback) with its count, its share and a bar in its tone */
+.review-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.review-bar {
+  --tone: var(--accent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  width: calc(100% + 16px);
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.review-bar {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+button.review-bar:hover:not(:disabled),
+button.review-bar[aria-pressed='true'] {
+  background: var(--surface-hover);
+}
+
+button.review-bar:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.review-bar.tone-good {
+  --tone: var(--good-text);
+}
+
+.review-bar.tone-warn {
+  --tone: var(--warn-text);
+}
+
+.review-bar.tone-bad {
+  --tone: var(--bad-text);
+}
+
+.review-bar.tone-neutral {
+  --tone: var(--text-muted);
+}
+
+.review-bar-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 550;
+  color: var(--text-primary);
+}
+
+.tone-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.review-top {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--text-caption);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.review-bar-value {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-bar-value strong {
+  font-weight: 650;
+}
+
+.review-bar-track {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.review-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tone);
+}
+
+/* "Others", in the callers' words: each wording once, with how often it was written */
+.review-notes {
+  display: grid;
+  gap: 10px;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.review-notes h4 {
+  margin: 0;
+  font-size: var(--text-footnote);
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+
+.review-notes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-footnote);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.review-note:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+/* The tables per person, student and course: the name filters the list below, then the counts */
+.review-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-who > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-who:hover,
+.review-who[aria-pressed='true'] {
+  background: var(--surface-hover);
+}
+
+/* Half a page wide: tighter cells, and a long name cut short (its first column takes what the counts leave) */
+.review-group-table th,
+.review-group-table td {
+  padding: 10px 8px;
+}
+
+.review-group-table tbody th {
+  width: 40%;
+  max-width: 0;
+}
+
+.review-more {
+  margin-top: var(--space-3);
+}
+
+.review-group-table tr.is-selected > * {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.review-avatar,
+.review-who-icon,
+.review-course-badge {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  font-size: 10px;
+}
+
+.review-who-icon {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.review-median {
+  margin: 0;
+}
+
+.review-median strong {
+  font-size: var(--text-title3);
+  font-weight: 750;
+}
+
+/* Day by day: a pair of thin bars per day (given out, feedback) beside the counts */
+.review-days td.review-day-bars {
+  width: 30%;
+  min-width: 120px;
+}
+
+.review-day-bars span {
+  display: block;
+  min-width: 2px;
+  height: 5px;
+  margin: 2px 0;
+  border-radius: 999px;
+}
+
+.review-day-bars .is-given,
+.review-swatch.is-given {
+  background: var(--accent);
+}
+
+.review-day-bars .is-feedback,
+.review-swatch.is-feedback {
+  background: var(--good-text);
+}
+
+.review-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+/* The list of every number and email */
+.review-list > .company-jobs-loading {
+  padding: 0 var(--space-6) var(--space-5);
+}
+
+.review-list > .note-warning {
+  margin: 0 var(--space-6) var(--space-4);
+}
+
+.review-table td {
+  vertical-align: top;
+}
+
+.review-contact-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-contact .badge-muted {
+  display: table;
+  margin-top: 4px;
+}
+
+.review-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: var(--text-footnote);
+  color: var(--text-muted);
+}
+
+.review-course-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--course);
+}
+
+.review-problem {
+  color: var(--bad-text);
+}
+
+.review-list-foot,
+.list-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+/* Small phones: the five tabs in one row (a little tighter; each still 50px+ wide and 44px tall) */
+@media (max-width: 430px) {
+  .app-nav a {
+    padding: 0 6px;
+    font-size: var(--text-caption);
+  }
+}
+
+@media (max-width: 370px) {
+  .app-nav a {
+    padding: 0 4px;
   }
 }

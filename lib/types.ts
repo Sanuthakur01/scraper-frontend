@@ -39,6 +39,7 @@ export interface Summary {
   current: CourseCounts;
   previous: CourseCounts;
   comparable?: boolean; // the period before was collected every day too (else previous is {})
+  withHrDetails?: CourseCounts; // of current, the jobs with HR details (the job list's hr=some; the rest hr=none)
 }
 
 export interface PlatformRow {
@@ -310,7 +311,9 @@ export interface ActivityChange {
   after: string[];
   added: string[]; // lists: values that are new...
   removed: string[]; // ...and values that are gone
-  contact?: { field: 'phone' | 'email'; value: string }; // which number or email (contactStudent / contactRemark)
+  // Which number or email (contactStudent / contactRemark); student: whose call a remark is about ('' : the
+  // number's own, before anyone had it; missing: recorded before a number could go to several students).
+  contact?: { field: 'phone' | 'email'; value: string; student?: string };
 }
 
 export interface ActivityEntry {
@@ -339,13 +342,14 @@ export interface PerformanceRow {
   field: 'phone' | 'email';
   value: string;
   key: string; // what the number/email is matched by (bare digits / lower case): rows of the same one share it
-  outcome: ContactOutcome | null; // its follow-up, if any
+  outcomes: ContactOutcome[]; // its follow-ups: one per student it was given to, the first given first
 }
 
-// The follow-up of one number or email (PUT /api/outcomes): the student it was given to, and how it went.
-export type RemarkStatus = 'dnp' | 'wrong' | 'not-person' | 'cv-shared' | 'no-openings' | 'other';
+// The follow-up of one number or email with one student (PUT /api/outcomes): the student it was given to, and
+// how their call went. A number can go to several students, each with a remark of their own.
+export type RemarkStatus = 'dnp' | 'busy' | 'switched-off' | 'wrong' | 'not-person' | 'cv-shared' | 'no-openings' | 'other';
 export interface ContactOutcome {
-  student: string; // '' = not given to anyone yet
+  student: string; // '' = a remark made before anyone was given the number
   status: RemarkStatus | '';
   note: string; // the words of an "Others" remark
   updatedAt: string | null;
@@ -360,6 +364,44 @@ export interface PerformanceResponse {
   rows: PerformanceRow[]; // newest first
   truncated: boolean;
   students: string[]; // every student name used so far, to suggest
+}
+
+// The Review board (GET /review): each HR number or email given to a student, with feedback recorded, or added
+// to a job by the team, in the period (people's work: the days end today).
+export interface ReviewPerson {
+  email: string;
+  name: string;
+}
+// One number or email with one student it was given to (a number can go to several), or with no student: a
+// number the team added that nobody has yet, or a remark made on it before anyone was given it.
+export interface ReviewRow {
+  id: string; // job|field|key|student (lower case)
+  contact: string; // job|field|key: the number's rows share it
+  student: string; // '' = no student
+  withStudents: number; // how many students have the number now
+  job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
+  field: 'phone' | 'email';
+  value: string; // as written
+  key: string;
+  // Who found it: the person who added it to the job ('team'), the job post ('post'), or before the activity
+  // record began ('earlier').
+  found: { source: 'team' | 'post' | 'earlier'; by: ReviewPerson | null };
+  added: { at: string; by: ReviewPerson } | null; // added to the job by the team in the period
+  // The latest time it was given to the student up to the period's end (inPeriod: in the period itself); null:
+  // taken back since, or given before the record began.
+  given: { at: string; by: ReviewPerson; student: string; inPeriod: boolean } | null;
+  // The feedback on the student's call recorded in the period (the latest); hours: since it was given to them
+  // (null: not given before it).
+  feedback: { at: string; by: ReviewPerson; label: string; status: RemarkStatus; note: string; hours: number | null } | null;
+  now: { student: string; status: RemarkStatus | ''; note: string } | null; // the student's follow-up today (null: none)
+}
+export interface ReviewResponse {
+  days: number;
+  from: string; // IST days, both included
+  to: string;
+  since: string | null; // when the activity record began
+  rows: ReviewRow[]; // the latest first
+  truncated: boolean;
 }
 
 // ---------- IJF AI (/api/chat…) ----------

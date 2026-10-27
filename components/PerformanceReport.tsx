@@ -1,18 +1,18 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ApiError, apiUrl, sendJson, useApi } from '@/lib/api';
+import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, percent, periodFrom, periodParams, type Period } from '@/lib/format';
-import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
-import { signInHeader } from '@/lib/session';
-import type { ContactOutcome, Job, JobsResponse, Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
+import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
+import type { Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
+import { useFollowUps } from '@/lib/useFollowUps';
 import { useAccess } from './AuthGate';
 import Avatar from './Avatar';
-import { OutcomeText, RemarkField, SaveMark, StudentField, type OutcomePatch, type SaveState } from './FollowUpControls';
+import ContactList, { useJobWindow } from './ContactList';
+import { FollowUps } from './FollowUpControls';
 import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
-import JobDetailsModal, { CopyButton } from './JobDetailsModal';
 import Leaderboard from './Leaderboard';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
@@ -22,17 +22,16 @@ const periodWords = (p: Period) => (p.from ? `on ${p.label}` : p.days === 1 ? 't
 
 const NEXT_LEVEL = { person: 'courses', course: 'companies', company: 'jobs', job: 'numbers and emails' } as const;
 
-// The "All contacts" list's filters: everything, what still needs doing, or one remark.
+// The "All contacts" list's filters: everything, what still needs doing (no remark on a call yet; given to no
+// student yet), or one remark (on any of its calls).
 type Filter = 'all' | 'no-remark' | 'unassigned' | RemarkStatus;
 const matches = (row: PerformanceRow, filter: Filter) =>
-  filter === 'all' ? true : filter === 'no-remark' ? !row.outcome?.status : filter === 'unassigned' ? !row.outcome?.student : row.outcome?.status === filter;
+  filter === 'all' ? true : filter === 'no-remark' ? needsRemark(row) : filter === 'unassigned' ? !hasStudent(row) : hasRemark(row, filter);
 const filterName = (filter: Filter) =>
   filter === 'all' ? 'All' : filter === 'no-remark' ? 'No remark yet' : filter === 'unassigned' ? 'Not assigned' : (REMARKS.find((r) => r.id === filter)?.label ?? filter);
-// What the list's search looks in: the number/email, company, job, student and who added it.
+// What the list's search looks in: the number/email, company, job, its students and notes, and who added it.
 const searchText = (row: PerformanceRow) =>
-  [row.value, row.job.company, row.job.title, row.outcome?.student, row.outcome?.note, row.actor.name, row.actor.email].join(' ').toLowerCase();
-
-const EMPTY_OUTCOME: ContactOutcome = { student: '', status: '', note: '', updatedAt: null, updatedBy: null };
+  [row.value, row.job.company, row.job.title, ...row.outcomes.flatMap((o) => [o.student, o.note]), row.actor.name, row.actor.email].join(' ').toLowerCase();
 
 // Up to this width the follow-up goes under each number/email instead of in two columns of its own.
 function useNarrow(query = '(max-width: 1023px)') {
@@ -88,14 +87,9 @@ function NodeLabel({ node }: { node: PerfNode }) {
   );
 }
 
-interface Opening {
-  id: string;
-  problem: string;
-}
-
 // The performance report: who added how many HR phone numbers and emails (a drill-down, person →
-// course → company → job → each number and email), and their follow-up by the calling team: the student
-// each number/email was given to and how it went, edited in place (each choice saves at once). "All
+// course → company → job → each number and email), and their follow-up by the calling team: the students
+// each number/email was given to and how each call went, edited in place (each choice saves at once). "All
 // contacts" lists every number and email once, to work through without opening any level.
 export default function PerformanceReport() {
   const router = useRouter();
@@ -119,25 +113,11 @@ export default function PerformanceReport() {
   }, [linkedShow, linkedFilter]);
   const [search, setSearch] = useState('');
   const [course, setCourse] = useState(''); // "All contacts": one course's numbers/emails ('' = all)
-  // A job opened from its row, or why it couldn't be.
-  const [detail, setDetail] = useState<Job | null>(null);
-  const [saved, setSaved] = useState<Record<string, Job>>({});
-  const [opening, setOpening] = useState<Opening | null>(null);
-
-  // Follow-ups changed here since the report loaded (shown at once, before the server answers), and how
-  // each save is going. Saves of one number/email go one after another, in the order they were made.
+  // Follow-ups changed here are shown at once, before the server answers (lib/useFollowUps.ts).
   const data = perf.data;
-  const [changed, setChanged] = useState<{ base: PerformanceResponse | null; map: Record<string, ContactOutcome | null> }>({ base: null, map: {} });
-  const [saves, setSaves] = useState<Record<string, SaveState>>({});
-  const [addedStudents, setAddedStudents] = useState<string[]>([]);
-  const queue = useRef<Record<string, Promise<void>>>({});
-  const pending = useRef<Record<string, number>>({});
-
-  const local = changed.base === data ? changed.map : null;
-  const rows = useMemo(
-    () => (data?.rows ?? []).map((row) => (local && outcomeKey(row) in local ? { ...row, outcome: local[outcomeKey(row)] } : row)),
-    [data, local],
-  );
+  const { rows, students, saves, save } = useFollowUps(data);
+  // A job opened from its row (in its window), or why it couldn't be.
+  const jobWindow = useJobWindow(meta.data?.courses, () => setReload((n) => n + 1));
   const tree = useMemo(() => buildTree(rows, (id) => meta.data?.courses.find((c) => c.id === id)?.name ?? id), [rows, meta.data]);
   // Every number and email once (the newest time it was added), for "All contacts".
   const contacts = useMemo(() => {
@@ -145,10 +125,6 @@ export default function PerformanceReport() {
     for (const row of rows) if (!seen.has(outcomeKey(row))) seen.set(outcomeKey(row), row);
     return [...seen.values()];
   }, [rows]);
-  const students = useMemo(
-    () => [...new Set([...(data?.students ?? []), ...addedStudents])].sort((a, b) => a.localeCompare(b)),
-    [data, addedStudents],
-  );
 
   // Which contacts the list shows is worked out when the course, the filter, the search or the data
   // changes, not when a follow-up is saved: a number given a remark under "No remark yet" stays in view
@@ -196,70 +172,11 @@ export default function PerformanceReport() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  // Saves one change to a number/email's follow-up: shown at once, sent in order, put back if refused.
-  const saveOutcome = (row: PerformanceRow, patch: OutcomePatch) => {
-    if (!data) return;
-    const key = outcomeKey(row);
-    const before = row.outcome;
-    const next: ContactOutcome = { ...(before ?? EMPTY_OUTCOME), ...patch, ...('status' in patch && patch.status !== 'other' ? { note: '' } : {}) };
-    const put = (outcome: ContactOutcome | null) =>
-      setChanged((c) => ({ base: data, map: { ...(c.base === data ? c.map : {}), [key]: outcome } }));
-    put(next.student || next.status ? next : null);
-    setSaves((s) => ({ ...s, [key]: { state: 'saving' } }));
-    pending.current[key] = (pending.current[key] ?? 0) + 1;
-    const send = async () => {
-      try {
-        const answer = await sendJson<{ outcome: ContactOutcome | null }>('outcomes', 'PUT', { job: row.job.id, field: row.field, value: row.value, ...patch });
-        if (pending.current[key] === 1) put(answer.outcome); // the newest save: the server's answer is what is stored
-        if ('student' in patch && patch.student) setAddedStudents((names) => (names.includes(patch.student) ? names : [...names, patch.student]));
-        setSaves((s) => ({ ...s, [key]: { state: 'saved' } }));
-        setTimeout(() => setSaves((s) => (s[key]?.state === 'saved' ? { ...s, [key]: undefined as unknown as SaveState } : s)), 2500);
-      } catch (err) {
-        put(before);
-        const message = err instanceof ApiError || err instanceof Error ? err.message : 'Not saved';
-        setSaves((s) => ({ ...s, [key]: { state: 'error', message: `Not saved: ${message}` } }));
-      } finally {
-        pending.current[key] -= 1;
-      }
-    };
-    queue.current[key] = (queue.current[key] ?? Promise.resolve()).then(send);
-  };
-
-  // The follow-up controls of one number/email (or what it says, for a role that can't change it).
-  const studentOf = (row: PerformanceRow) =>
-    mayRecord ? (
-      <StudentField value={row.outcome?.student ?? ''} label={row.value} listId={studentsId} onSave={(student) => saveOutcome(row, { student })} />
-    ) : (
-      <span>{row.outcome?.student || <span className="muted">—</span>}</span>
-    );
-  const remarkOf = (row: PerformanceRow) =>
-    mayRecord ? (
-      <span className="remark-cell">
-        <RemarkField field={row.field} status={row.outcome?.status ?? ''} note={row.outcome?.note ?? ''} label={row.value} onSave={(p) => saveOutcome(row, p)} />
-        <SaveMark save={saves[outcomeKey(row)]} />
-      </span>
-    ) : (
-      <OutcomeText outcome={row.outcome ? { ...row.outcome, student: '' } : null} field={row.field} />
-    );
-
-  // Opens a job (in the set it was in), if it is still stored.
-  const openJob = async (id: string, ref: PerformanceRow['job']) => {
-    setOpening({ id, problem: '' });
-    try {
-      const params = { id: ref.id, days: 1, view: ref.set === 'nonfiltered' ? 'nonfiltered' : undefined };
-      const res = await fetch(apiUrl('jobs', params), { headers: await signInHeader() });
-      const body = (await res.json().catch(() => null)) as JobsResponse | null;
-      const job = body?.items?.[0];
-      if (!res.ok || !job) {
-        setOpening({ id, problem: 'This job is no longer stored (jobs are kept for 90 days after they were last seen).' });
-        return;
-      }
-      setOpening(null);
-      setDetail(saved[job._id] ?? job);
-    } catch {
-      setOpening({ id, problem: 'Could not reach the server. Check your connection and try again.' });
-    }
-  };
+  // The follow-ups of one number/email: its students and the remark on each one's call (what they say, for a
+  // role that can't change them).
+  const followUps = (row: PerformanceRow, className = '') => (
+    <FollowUps row={row} listId={studentsId} save={saves[outcomeKey(row)]} onChange={(op) => save(row, op)} readOnly={!mayRecord} className={className} />
+  );
 
   // "2 of 3": how many of a level's numbers/emails have a student / a remark.
   const progress = (done: number, total: number) => (
@@ -288,15 +205,15 @@ export default function PerformanceReport() {
                 <NodeLabel node={node} />
               </button>
               {node.level === 'job' && node.job && (
-                <button type="button" className="perf-open" onClick={() => node.job && openJob(node.id, node.job)} aria-haspopup="dialog" title="Open this job">
+                <button type="button" className="perf-open" onClick={() => node.job && jobWindow.openJob(node.id, node.job)} aria-haspopup="dialog" title="Open this job">
                   <ExternalIcon size={13} />
                   <span className="sr-only">Open {node.label}</span>
                 </button>
               )}
             </div>
-            {opening?.id === node.id && opening.problem && (
+            {jobWindow.opening?.id === node.id && jobWindow.opening.problem && (
               <p className="field-error perf-problem" style={depth} role="status">
-                {opening.problem}
+                {jobWindow.opening.problem}
               </p>
             )}
           </th>
@@ -340,16 +257,14 @@ export default function PerformanceReport() {
                 </div>
                 {narrow && (
                   <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
-                    {studentOf(row)}
-                    {remarkOf(row)}
+                    {followUps(row)}
                   </div>
                 )}
               </td>
               {!narrow && (
-                <>
-                  <td className="followup-cell">{studentOf(row)}</td>
-                  <td className="followup-cell">{remarkOf(row)}</td>
-                </>
+                <td className="followup-cell" colSpan={2}>
+                  {followUps(row)}
+                </td>
               )}
             </tr>
           ))}
@@ -362,7 +277,7 @@ export default function PerformanceReport() {
       <PageHeader
         eyebrow={`Team · ${period.label}`}
         title="Performance report"
-        subtitle="How many HR phone numbers and emails each person added, and where; and for each one, the student it was given to and how it went."
+        subtitle="How many HR phone numbers and emails each person added, and where; and for each one, the students it was given to and how each call went."
         actions={
           <PeriodTabs
             period={period}
@@ -411,7 +326,7 @@ export default function PerformanceReport() {
           description={
             view === 'people'
               ? "Most first. Each number and email counts once; one already in the job post doesn't count."
-              : 'Every number and email once, newest first. Assign a student and pick a remark: each saves by itself.'
+              : 'Every number and email once, newest first. Give each to one or more students and pick the remark on each call: each saves by itself.'
           }
           actions={
             rows.length > 0 && (
@@ -551,60 +466,7 @@ export default function PerformanceReport() {
               </div>
             </div>
             {listed.length ? (
-              <ul className="contact-list">
-                <li className="contact-item contact-head" aria-hidden="true">
-                  <span>Number / email</span>
-                  <span>Company and job</span>
-                  <span>Added</span>
-                  <span>Assigned to</span>
-                  <span>Remark</span>
-                </li>
-                {listed.map((row) => {
-                  const key = outcomeKey(row);
-                  const course = courses.find((c) => c.id === row.job.course);
-                  return (
-                    <li key={key} className="contact-item">
-                      <span className="ci-contact">
-                        <span className={`perf-kind ${row.field}`}>
-                          {row.field === 'phone' ? <PhoneIcon size={13} /> : <MailIcon size={13} />}
-                          <span className="sr-only">{row.field === 'phone' ? 'Phone' : 'Email'}</span>
-                        </span>
-                        <span className="perf-value">{row.value}</span>
-                        <CopyButton value={row.value} what={row.field === 'phone' ? 'phone number' : 'email'} />
-                      </span>
-                      <span className="ci-job">
-                        <button type="button" className="ci-job-open" onClick={() => openJob(key, row.job)} aria-haspopup="dialog" title="Open this job">
-                          <strong>{row.job.company || 'Company not shown'}</strong>
-                          <span>{row.job.title}</span>
-                        </button>
-                        <span className="ci-tags">
-                          {course && (
-                            <span className="ci-course">
-                              <span className="dot" style={{ background: COURSE_COLORS[course.id] }} aria-hidden="true" />
-                              {course.name}
-                            </span>
-                          )}
-                          {row.job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
-                        </span>
-                        {opening?.id === key && opening.problem && (
-                          <span className="field-error" role="status">
-                            {opening.problem}
-                          </span>
-                        )}
-                      </span>
-                      <span className="ci-added muted">
-                        by {row.actor.name || row.actor.email}
-                        <br />
-                        <time dateTime={row.at} title={formatDateTime(row.at)}>
-                          {formatUpdated(row.at)}
-                        </time>
-                      </span>
-                      <span className="ci-student">{studentOf(row)}</span>
-                      <span className="ci-remark">{remarkOf(row)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
+              <ContactList rows={listed} courses={courses} opening={jobWindow.opening} onOpenJob={jobWindow.openJob} followUps={(row) => followUps(row, 'ci-followups')} />
             ) : (
               <div className="activity-empty">
                 <p>
@@ -620,19 +482,7 @@ export default function PerformanceReport() {
         )}
       </section>
 
-      {detail && (
-        <JobDetailsModal
-          job={saved[detail._id] ?? detail}
-          courses={courses}
-          saved={saved}
-          onClose={() => setDetail(null)}
-          onSaved={(job) => {
-            setSaved((jobs) => ({ ...jobs, [job._id]: job }));
-            setReload((n) => n + 1);
-          }}
-          onOpenJob={(job) => setDetail(saved[job._id] ?? job)}
-        />
-      )}
+      {jobWindow.modal}
     </main>
   );
 }
