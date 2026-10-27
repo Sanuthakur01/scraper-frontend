@@ -45,14 +45,14 @@ export async function sendJson<T>(path: string, method: 'PUT' | 'POST', body: un
   return data as T;
 }
 
-// apiUrl for the jobs the dashboard shows now (Filtered or Non-filtered), e.g. for CSV download links.
+// apiUrl for the jobs the dashboard shows now (Filtered, Non-filtered or All), e.g. for CSV download links.
 export function useApiUrl() {
   const { view } = useDataView();
   return (path: string, params?: QueryParams) => apiUrl(path, { ...params, ...viewParam(view) });
 }
 
-// Fetches whenever the URL changes (also when the Filtered / Non-filtered switch changes, which adds
-// ?view=nonfiltered). Keeps the previous data while reloading so the page doesn't jump, except after a
+// Fetches whenever the URL changes (also when the Filtered / Non-filtered / All switch changes, which adds
+// ?view=nonfiltered or ?view=all). Keeps the previous data while reloading so the page doesn't jump, except after a
 // switch: then the old data goes at once, so one set's numbers never show under the other's name.
 // skip: don't fetch (yet), e.g. when a value the request needs is missing. auth: send the person's
 // sign-in (for data only signed-in people may read, e.g. the activity record). reload() fetches again,

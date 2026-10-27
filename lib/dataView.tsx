@@ -2,11 +2,11 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-// Which jobs the whole dashboard shows: the kept ones ('filtered', the default) or the ones the keep
-// rules leave out ('nonfiltered': large IT services firms, fresher jobs (under the minimum experience), experience not
-// stated, or from the extra searches). Every API call adds ?view=nonfiltered for the second (see
-// useApi), so every page switches.
-export type DataView = 'filtered' | 'nonfiltered';
+// Which jobs the whole dashboard shows: the kept ones ('filtered', the default), the ones the keep rules
+// leave out ('nonfiltered': large IT services firms, fresher jobs (under the minimum experience), experience not
+// stated, or from the extra searches), or both together ('all'; each job is in one of the two). Every API
+// call adds ?view=nonfiltered or ?view=all for the other two (see useApi), so every page switches.
+export type DataView = 'filtered' | 'nonfiltered' | 'all';
 
 interface DataViewState {
   view: DataView;
@@ -24,7 +24,8 @@ export function DataViewProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(STORAGE_KEY) === 'nonfiltered') setViewState('nonfiltered');
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'nonfiltered' || saved === 'all') setViewState(saved);
     } catch {
       // storage blocked (private window): Filtered
     }
@@ -46,4 +47,4 @@ export function DataViewProvider({ children }: { children: ReactNode }) {
 export const useDataView = () => useContext(DataViewContext);
 
 // The API's view parameter: nothing for Filtered, so those requests are exactly as before.
-export const viewParam = (view: DataView) => (view === 'nonfiltered' ? { view } : {});
+export const viewParam = (view: DataView) => (view === 'filtered' ? {} : { view });

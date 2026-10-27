@@ -73,7 +73,6 @@ function BoardSkeleton({ rows }: { rows: number }) {
 function YesterdayWinner({ state, day }: { state: ApiState<PerformanceResponse>; day: string }) {
   const board = state.data ? standings(state.data.rows) : [];
   const winners = board.filter((p) => p.rank === 1);
-  const runnerUp = board.find((p) => p.rank > 1);
   const [winner] = winners;
   return (
     <div className={`lb-winner ${winner ? 'has-winner' : ''}`}>
@@ -125,13 +124,6 @@ function YesterdayWinner({ state, day }: { state: ApiState<PerformanceResponse>;
               </span>
             </p>
           )}
-          <p className="lb-champ-margin">
-            {winners.length > 1
-              ? 'A tie for first place'
-              : runnerUp
-                ? `${formatNumber(winner.total - runnerUp.total)} more than ${runnerUp.name}`
-                : 'The only one to add contacts'}
-          </p>
         </>
       )}
     </div>

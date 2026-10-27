@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError, apiUrl, useApi } from '@/lib/api';
 import { ask, chatApi, pageContext } from '@/lib/chat';
-import { useDataView } from '@/lib/dataView';
+import { useDataView, type DataView } from '@/lib/dataView';
 import { COURSE_COLORS, formatDate, formatNumber, formatUpdated, shownCities } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
 import type { ChatAction, ChatCard, ChatMessage, ChatReminder, ChatSummary, ChatUsage, Course, Job, JobsResponse, Meta } from '@/lib/types';
@@ -128,7 +128,7 @@ export default function AiChat() {
 
   // A dashboard page from an answer or a card (in its view); on a phone the chat steps aside.
   const go = useCallback(
-    (href: string, linkView?: 'filtered' | 'nonfiltered') => {
+    (href: string, linkView?: DataView) => {
       if (linkView && linkView !== view) setView(linkView);
       router.push(href);
       if (window.innerWidth < 760) setOpen(false);
@@ -511,7 +511,7 @@ function Welcome({
 
 // ---------- cards beside an answer (real data: contacts included) ----------
 
-function Card({ card, courses, onOpenJob, onLink }: { card: ChatCard; courses: Course[]; onOpenJob: (id: string, set: 'filtered' | 'nonfiltered') => void; onLink: (href: string, view?: 'filtered' | 'nonfiltered') => void }) {
+function Card({ card, courses, onOpenJob, onLink }: { card: ChatCard; courses: Course[]; onOpenJob: (id: string, set: 'filtered' | 'nonfiltered') => void; onLink: (href: string, view?: DataView) => void }) {
   const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? id;
   if (card.type === 'jobs') {
     return (

@@ -38,11 +38,11 @@ const ALL_BANDS = [
 ];
 
 // The experience groups of the jobs shown: for the kept (Filtered) jobs one per year from the minimum
-// (2 by default) up to 5, then "5+ yrs" for jobs asking more than 5 years; for the Non-filtered jobs all
-// of them, Fresher and "Not stated" too. Each job is in exactly one group. Ids match the server's
+// (2 by default) up to 5, then "5+ yrs" for jobs asking more than 5 years; for the Non-filtered jobs (and
+// All, which has them too) all of them, Fresher and "Not stated" too. Each job is in exactly one group. Ids match the server's
 // experienceBand(): 'fresher', '1'…'5', '5+', 'unknown'.
 export function experienceBands({ min, max }: ExperienceRange, view: DataView = 'filtered') {
-  if (view === 'nonfiltered') return ALL_BANDS;
+  if (view !== 'filtered') return ALL_BANDS;
   const bands: { id: string; label: string }[] = [];
   for (let years = min; years <= 5 && (max == null || years <= max); years++) {
     bands.push(years <= 0 ? { id: 'fresher', label: 'Fresher' } : { id: String(years), label: years === 1 ? '1 yr' : `${years} yrs` });

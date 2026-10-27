@@ -1,5 +1,7 @@
 // Shapes of the Express API responses (server/src/api/routes.js).
 
+import type { DataView } from './dataView';
+
 export type CourseId = 'data-analyst' | 'data-science' | 'data-engineering' | 'production-support';
 
 export interface Course {
@@ -192,11 +194,11 @@ export interface PartnersResponse {
 }
 
 // One role's openings (role-jobs?role=sre): the period's jobs with that role's titles in the view's set
-// (Filtered, or Non-filtered with each one's leftOutBy), newest first, a page at a time; total is the
-// view's, filtered and nonFiltered both sets'.
+// (Filtered, Non-filtered with each one's leftOutBy, or All), newest first, a page at a time; total is the
+// view's, filtered and nonFiltered each set's.
 export interface RoleJobsResponse {
   role: { id: string; name: string };
-  view: 'filtered' | 'nonfiltered';
+  view: DataView;
   days: number;
   from: string;
   to: string;
@@ -370,9 +372,9 @@ export interface ChatJobsCard {
   total: number;
   withHrDetails: number;
   period: ChatPeriod;
-  view: 'filtered' | 'nonfiltered';
+  view: DataView;
   items: { id: string; title: string; company: string; course: CourseId; cities: string[]; set: 'filtered' | 'nonfiltered' }[];
-  links: { label: string; href: string; view: 'filtered' | 'nonfiltered' }[];
+  links: { label: string; href: string; view: DataView }[];
 }
 export interface ChatContactsCard {
   type: 'contacts';

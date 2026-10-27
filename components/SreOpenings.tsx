@@ -44,7 +44,13 @@ export default function SreOpenings() {
         role="sre"
         title="Openings"
         noun="SRE openings"
-        description={view === 'nonfiltered' ? 'Non-filtered · newest first, each tagged with why our filters leave it out' : 'Filtered · newest first'}
+        description={
+          view === 'nonfiltered'
+            ? 'Non-filtered · newest first, each tagged with why our filters leave it out'
+            : view === 'all'
+              ? 'All (Filtered and Non-filtered) · newest first, each Non-filtered one tagged with why'
+              : 'Filtered · newest first'
+        }
         period={period}
         courses={courses}
       />

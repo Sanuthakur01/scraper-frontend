@@ -24,8 +24,9 @@ interface Props {
 }
 
 // A box with one role's openings in a period (the "SRE Openings" page: every Site Reliability Engineer
-// job), newest first, in the Filtered or Non-filtered jobs as the switch at the top says (each Non-filtered
-// one tagged with why); it says how many the other set has, and one click shows them. Each job is a row
+// job), newest first, in the Filtered, Non-filtered or All jobs as the switch at the top says (each
+// Non-filtered one tagged with why); in the first two it says how many the other set has, and one click
+// shows them. Each job is a row
 // of the job list (JobRow): its HR contact and students are added and saved right in the row (the
 // pencil, then ✓ Save), and the company name opens its details window with everything else.
 export default function RoleOpenings({ role, title, noun, description, period, courses }: Props) {
@@ -49,7 +50,8 @@ export default function RoleOpenings({ role, title, noun, description, period, c
     setPage(1);
   }
   const nonfiltered = view === 'nonfiltered';
-  const other = data ? (nonfiltered ? data.filtered : data.nonFiltered) : 0;
+  // The other set's openings (none in All, which has both).
+  const other = data && view !== 'all' ? (nonfiltered ? data.filtered : data.nonFiltered) : 0;
 
   const items = (data?.items ?? []).map((job) => saved[job._id] ?? job);
   const first = data ? (data.page - 1) * data.pageSize + 1 : 0;
@@ -83,7 +85,7 @@ export default function RoleOpenings({ role, title, noun, description, period, c
       )}
       {data && data.total === 0 && (
         <p className="empty">
-          No {nonfiltered ? 'Non-filtered' : 'Filtered'} {noun} in this period.
+          No {view === 'all' ? '' : nonfiltered ? 'Non-filtered ' : 'Filtered '}{noun} in this period.
           {other > 0 ? ` ${formatNumber(other)} in ${nonfiltered ? 'Filtered' : 'Non-filtered'}: use the button above.` : ' Try Last 7 days or Last 30 days.'}
         </p>
       )}

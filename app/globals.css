@@ -590,19 +590,20 @@ optgroup {
   gap: 8px;
 }
 
-/* ---------- Filtered / Non-filtered switch (right of light/dark) ---------- */
+/* ---------- Filtered / Non-filtered / All switch (right of light/dark) ---------- */
 
 .app-header-view {
   display: flex;
   align-items: center;
 }
 
-/* A segmented control of two: each half chooses its own side (choosing the side already shown does
-   nothing). The knob slides to the side shown: left = Filtered, right = Non-filtered (amber). */
+/* A segmented control of three: each segment chooses its own set (choosing the one already shown does
+   nothing). Each is as wide as its label; the knob slides under the one shown (DataViewToggle places it):
+   Filtered, Non-filtered (amber) or All. */
 .view-switch {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, auto);
   height: 36px;
   padding: 3px;
   border-radius: var(--radius-sm);
@@ -618,7 +619,7 @@ optgroup {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 0;
+  min-width: 48px;
   padding: 0 12px;
   border: 0;
   border-radius: var(--radius-xs);
@@ -640,7 +641,7 @@ optgroup {
   cursor: default;
 }
 
-.view-switch.on button[aria-pressed='true'] {
+.view-switch.is-nonfiltered button[aria-pressed='true'] {
   color: var(--warn-text);
 }
 
@@ -653,16 +654,15 @@ optgroup {
   position: absolute;
   top: 3px;
   bottom: 3px;
-  left: 3px;
-  width: calc(50% - 3px);
+  left: 0;
+  width: 0; /* until placed */
   border-radius: var(--radius-xs);
   background: var(--accent-gradient);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), var(--glow-accent);
-  transition: transform 0.2s ease, background 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s ease, width 0.2s ease, background 0.2s, box-shadow 0.2s;
 }
 
-.view-switch.on .view-switch-knob {
-  transform: translateX(100%);
+.view-switch.is-nonfiltered .view-switch-knob {
   background: var(--warn-bg);
   box-shadow: 0 0 0 1px var(--warn-border);
 }
@@ -6454,7 +6454,6 @@ html:has(.job-modal[open]) {
     font-size: var(--text-footnote);
   }
   .view-switch {
-    width: min(100%, 260px);
     height: 44px;
   }
   .icon-btn.theme-toggle {
@@ -6475,6 +6474,24 @@ html:has(.job-modal[open]) {
 }
 
 @media (max-width: 640px) {
+  /* The view switch on a row of its own under the logo and the account, so its three labels fit */
+  .app-header-view {
+    order: 4;
+    flex: 1 1 100%;
+  }
+  .app-header-end {
+    margin-left: auto;
+  }
+  .app-nav {
+    order: 5;
+  }
+  .view-switch {
+    width: 100%;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  #jobs {
+    scroll-margin-top: 180px; /* the bar is a row taller here */
+  }
   .app-footer-inner {
     padding: var(--space-4) var(--space-4) 88px;
   }
@@ -7639,17 +7656,6 @@ html:has(.job-modal[open]) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-}
-
-.lb-champ-margin {
-  margin-top: 4px;
-  padding: 4px 12px;
-  border: 1px solid color-mix(in srgb, var(--medal-gold) 40%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--medal-gold) 15%, transparent);
-  font-size: var(--text-caption);
-  font-weight: 650;
-  color: var(--text-primary);
 }
 
 .lb-winner-empty {

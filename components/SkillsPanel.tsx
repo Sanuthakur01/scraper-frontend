@@ -211,7 +211,7 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
                   Counted from {formatNumber(data.postings)} {courseName} job posts collected
                   {data.source.platforms.length ? ` from ${data.source.platforms.join(', ')}` : ''}
                   {data.source.firstSeenFrom ? `, first seen ${formatDate(data.source.firstSeenFrom)} – ${formatDate(data.source.firstSeenTo)}` : ''}{' '}
-                  (India, {view === 'nonfiltered' ? 'only the jobs our filters leave out' : `${experienceRangeText(experience)} years' experience`}). Last updated {formatDateTime(data.source.lastRefreshed)}.
+                  (India, {view === 'nonfiltered' ? 'only the jobs our filters leave out' : view === 'all' ? 'the Filtered and Non-filtered jobs together' : `${experienceRangeText(experience)} years' experience`}). Last updated {formatDateTime(data.source.lastRefreshed)}.
                 </p>
                 <p>
                   Students &ldquo;match&rdquo; a job post when the course teaches every skill it names, out of the {data.trackedSkillCount} we

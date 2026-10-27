@@ -1,17 +1,18 @@
 // Talking to IJF AI (server: src/ai/routes.js). Every request carries the person's sign-in; the answer to
 // a question streams back as server-sent events, read here with fetch (EventSource can't send the sign-in).
 import { ApiError, apiUrl } from './api';
+import type { DataView } from './dataView';
 import { signInHeader } from './session';
 import type { ChatAction, ChatCard, ChatMessage, ChatPeriod } from './types';
 
 export interface ChatContext {
   path: string;
   period?: ChatPeriod;
-  view: 'filtered' | 'nonfiltered';
+  view: DataView;
 }
 
 // The page the person is on, for "this course", "these jobs".
-export function pageContext(view: 'filtered' | 'nonfiltered'): ChatContext {
+export function pageContext(view: DataView): ChatContext {
   const { pathname, search } = window.location;
   const q = new URLSearchParams(search);
   const from = q.get('from');
