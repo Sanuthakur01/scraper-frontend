@@ -345,6 +345,7 @@ export interface PerformanceRow {
   value: string;
   key: string; // what the number/email is matched by (bare digits / lower case): rows of the same one share it
   outcomes: ContactOutcome[]; // its follow-ups: one per student it was given to, the first given first
+  foundBy?: string; // where it was found ("Apollo": the job's Found by when it was added); '' = not recorded
 }
 
 // The follow-up of one number or email with one student (PUT /api/outcomes): the student it was given to, and

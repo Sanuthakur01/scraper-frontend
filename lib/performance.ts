@@ -113,6 +113,7 @@ export interface Counts {
   assigned: number; // of total: given to a student
   remarked: number; // of total: with a remark
   cvShared: number; // CVs shared on them: each student's call that ended in "CV shared" (two students: two)
+  sources: { source: string; count: number }[]; // where they were found (Found by), most first
 }
 
 export interface PerfNode extends Counts {
@@ -137,7 +138,16 @@ export function countsOf(rows: PerformanceRow[]): Counts {
     assigned: rows.filter(hasStudent).length,
     remarked: rows.filter((r) => followUpsOf(r).some((o) => o.status)).length,
     cvShared: rows.reduce((n, r) => n + cvSharedOf(r), 0),
+    sources: sourcesOf(rows),
   };
+}
+
+// Where numbers and emails were found (Found by), most first, then A–Z. Those added before Found by was asked
+// for (none recorded) aren't listed.
+export function sourcesOf(rows: Pick<PerformanceRow, 'foundBy'>[]) {
+  const counts = new Map<string, number>();
+  for (const r of rows) if (r.foundBy) counts.set(r.foundBy, (counts.get(r.foundBy) ?? 0) + 1);
+  return [...counts].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count || a.source.localeCompare(b.source));
 }
 
 // What a row is grouped by at each level. Companies ignore letter case and spaces around the name.
@@ -230,7 +240,7 @@ export const csvCell = (value: unknown) => {
 
 // One line per number or email added (the final grain), for a spreadsheet.
 export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id) {
-  const header = ['Added (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value', 'Assigned to', 'Remark'];
+  const header = ['Added (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value', 'Found by', 'Assigned to', 'Remark'];
   const lines = rows.map((r) =>
     [
       istStamp(r.at),
@@ -243,6 +253,7 @@ export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) 
       r.job.set === 'nonfiltered' ? 'Non-filtered' : 'Filtered',
       r.field === 'phone' ? 'Phone' : 'Email',
       r.value,
+      r.foundBy ?? '',
       followUpsOf(r).map((o) => o.student).filter(Boolean).join('; '),
       remarksText(r),
     ]

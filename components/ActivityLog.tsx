@@ -112,7 +112,7 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
         </p>
         <ul className="activity-changes">
           {entry.changes.map((change) => (
-            <li key={change.field}>
+            <li key={change.field} className={change.contact ? 'has-contact' : undefined}>
               <span className="change-field">
                 {FIELDS[change.field].icon} {FIELDS[change.field].label}
                 {change.contact && (

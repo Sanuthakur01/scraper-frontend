@@ -3871,7 +3871,8 @@ button.rank-row:disabled {
 }
 
 .perf-table .perf-leaf td.cv-col,
-.perf-table .perf-leaf td.given-col {
+.perf-table .perf-leaf td.given-col,
+.perf-table .perf-leaf td.found-col {
   width: auto;
 }
 
@@ -4096,48 +4097,39 @@ button.rank-row:disabled {
 
 /* ---------- Performance report: follow-up of each number/email (student + remark, saved in place) ---------- */
 
-.perf-table.with-followup thead th:nth-last-child(-n + 2),
-.perf-table.with-followup .perf-row td:nth-last-child(-n + 2),
-.perf-table.with-followup tfoot td:nth-last-child(-n + 2) {
-  width: 200px;
-  min-width: 200px;
+/* "Mostly found by": where most of a level's numbers were found, and how many of them */
+.perf-table .found-col {
+  min-width: 132px;
 }
 
-/* A number's follow-ups span both columns; the gap (two cells' padding) keeps them under their headings */
-.perf-table.with-followup .perf-leaf td.followup-cell {
-  width: auto;
+.found-by-cell {
+  display: grid;
+  line-height: 1.3;
 }
 
-.perf-leaf .followup-cell .followups {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 32px;
+.found-by-top {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.perf-table.with-followup th[scope='row'] {
-  width: auto;
-}
-
-/* "2 of 3": how many numbers/emails of a level have a student / a remark */
-.perf-progress {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--text-footnote);
+.found-by-share {
+  font-size: var(--text-caption);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-.perf-progress.done {
-  color: var(--good-text);
-  font-weight: 600;
+/* Less room: the two long headings take two lines instead of widening their columns */
+@media (max-width: 1200px) {
+  .perf-table thead th.given-col,
+  .perf-table thead th.found-col {
+    white-space: normal;
+  }
+  .perf-table .found-col {
+    min-width: 0;
+  }
 }
 
-.perf-leaf .followup-cell {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-/* Narrow screens: the follow-up under the number/email */
+/* A number's follow-ups (its students and the remark on each one's call), under it */
 .leaf-followup {
   margin-top: 8px;
   padding-left: calc(var(--depth, 0) * 22px + 28px);
@@ -4280,16 +4272,6 @@ button.rank-row:disabled {
 /* Nothing to say: no room taken (a lone remark box stays level with its student box) */
 .save-mark:empty {
   display: none;
-}
-
-/* The drill-down's narrow columns: saving and saved by their icon alone (the words stay for screen readers) */
-.perf-leaf .followup-cell .save-mark:not(.failed) .save-text {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .save-mark.failed {
@@ -4531,9 +4513,12 @@ button.rank-row:disabled {
 /* The activity record: which number or email a follow-up change is about */
 .change-contact {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  gap: 0 4px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 0 8px;
   border-radius: var(--radius-xs);
   background: var(--surface-hover);
@@ -4587,8 +4572,7 @@ button.rank-row:disabled {
   }
   /* Each student's name, then the remark on their call under it, full width; a little more room between students */
   .followups,
-  .contact-item > .ci-followups,
-  .perf-leaf .followup-cell .followups {
+  .contact-item > .ci-followups {
     grid-column: 1 / -1;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 12px;
@@ -7020,10 +7004,18 @@ html:has(.job-modal[open]) {
   font-size: var(--text-footnote);
 }
 
+/* A follow-up's line also names its number or email (and the student): the first column widens to fit
+   them, up to 60% of the line, instead of spilling over "Added" and the values */
+.activity-changes li.has-contact {
+  grid-template-columns: fit-content(60%) 70px minmax(0, 1fr);
+}
+
 .change-field {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+  min-width: 0;
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -7161,7 +7153,8 @@ html:has(.job-modal[open]) {
   .activity-who {
     padding-right: 64px; /* room for the time */
   }
-  .activity-changes li {
+  .activity-changes li,
+  .activity-changes li.has-contact {
     grid-template-columns: minmax(0, 1fr) auto;
   }
   .change-values {

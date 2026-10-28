@@ -5,20 +5,44 @@ import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type
 import { useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, percent, periodFrom, periodParams, type Period } from '@/lib/format';
-import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, cvSharedOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
+import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, cvSharedOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type Counts, type PerfNode } from '@/lib/performance';
 import type { Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
 import { useFollowUps } from '@/lib/useFollowUps';
 import { useAccess } from './AuthGate';
 import Avatar from './Avatar';
 import ContactList, { useJobWindow } from './ContactList';
 import { FollowUps } from './FollowUpControls';
-import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import { BriefcaseIcon, BuildingIcon, ChartIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
 import Leaderboard from './Leaderboard';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 
 // "today", "in the last 7 days", "on 9–12 Oct"
 const periodWords = (p: Period) => (p.from ? `on ${p.label}` : p.days === 1 ? 'today' : `in the ${p.label.toLowerCase()}`);
+
+// "Mostly found by": where most of a level's numbers and emails were found (two tied: both; more: "Mixed"), and
+// how many of them; the whole split in its tooltip. "—" when none says (added before Found by was asked for).
+const NOT_RECORDED = (
+  <span className="muted" title="Not recorded: added before Found by was asked for">
+    —
+  </span>
+);
+function mostlyFound(sources: Counts['sources'], total: number) {
+  if (!sources.length) return NOT_RECORDED;
+  const top = sources.filter((s) => s.count === sources[0].count);
+  const notRecorded = total - sources.reduce((n, s) => n + s.count, 0);
+  const split = [...sources.map((s) => `${s.source} ${formatNumber(s.count)}`), ...(notRecorded ? [`Not recorded ${formatNumber(notRecorded)}`] : [])];
+  return (
+    <span className="found-by-cell" title={split.join(' · ')}>
+      <span className="found-by-top">{top.length > 2 ? 'Mixed' : top.map((s) => s.source).join(', ')}</span>
+      <span className="found-by-share">
+        {top.length > 2
+          ? `${top.length} sources, ${formatNumber(top[0].count)} each`
+          : `${formatNumber(top[0].count)}${top.length > 1 ? ' each' : ''} of ${formatNumber(total)}`}
+      </span>
+    </span>
+  );
+}
 
 const NEXT_LEVEL = { person: 'courses', course: 'companies', company: 'jobs', job: 'numbers and emails' } as const;
 
@@ -33,18 +57,6 @@ const filterName = (filter: Filter) =>
 const searchText = (row: PerformanceRow) =>
   [row.value, row.job.company, row.job.title, ...row.outcomes.flatMap((o) => [o.student, o.note]), row.actor.name, row.actor.email].join(' ').toLowerCase();
 
-// Up to this width the follow-up goes under each number/email instead of in two columns of its own.
-function useNarrow(query = '(max-width: 1023px)') {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    const list = window.matchMedia(query);
-    const update = () => setNarrow(list.matches);
-    update();
-    list.addEventListener('change', update);
-    return () => list.removeEventListener('change', update);
-  }, [query]);
-  return narrow;
-}
 
 // One row of the drill-down: a person, a course, a company or a job, with its counts. Its toggle shows
 // the level below; a job shows each number and email added to it (the final grain).
@@ -100,7 +112,6 @@ export default function PerformanceReport() {
   const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), r: reload || undefined }, { auth: true });
   const mayRecord = useAccess()?.can('record-outcomes') ?? false;
   const studentsId = useId();
-  const narrow = useNarrow();
   // ?show=contacts&filter=no-remark (a link from IJF AI's reminders) opens "All contacts" with that filter.
   const linkedShow = searchParams.get('show') === 'contacts' ? 'contacts' : null;
   const linkedFilter = searchParams.get('filter') ?? '';
@@ -177,13 +188,6 @@ export default function PerformanceReport() {
     <FollowUps row={row} listId={studentsId} save={saves[outcomeKey(row)]} onChange={(op) => save(row, op)} readOnly={!mayRecord} className={className} />
   );
 
-  // "2 of 3": how many of a level's numbers/emails have a student / a remark.
-  const progress = (done: number, total: number) => (
-    <span className={`perf-progress ${done === total ? 'done' : ''}`}>
-      {done === total ? <CheckIcon size={12} /> : null}
-      {formatNumber(done)} of {formatNumber(total)}
-    </span>
-  );
 
   const renderNode = (node: PerfNode): ReactNode => {
     const isOpen = open.has(node.id);
@@ -224,12 +228,7 @@ export default function PerformanceReport() {
           <td className="num">{formatNumber(node.jobs)}</td>
           <td className={`num given-col ${node.assigned ? '' : 'is-zero'}`}>{formatNumber(node.assigned)}</td>
           <td className={`num cv-col ${node.cvShared ? '' : 'is-zero'}`}>{formatNumber(node.cvShared)}</td>
-          {!narrow && (
-            <>
-              <td>{progress(node.assigned, node.total)}</td>
-              <td>{progress(node.remarked, node.total)}</td>
-            </>
-          )}
+          <td className="found-col">{mostlyFound(node.sources, node.total)}</td>
         </tr>
         {isOpen && node.children.map(renderNode)}
         {isOpen &&
@@ -247,19 +246,13 @@ export default function PerformanceReport() {
                     added {formatUpdated(row.at)}
                   </time>
                 </div>
-                {narrow && (
-                  <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
-                    {followUps(row)}
-                  </div>
-                )}
+                <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
+                  {followUps(row)}
+                </div>
               </td>
               <td className={`num given-col ${hasStudent(row) ? '' : 'is-zero'}`}>{hasStudent(row) ? '1' : '—'}</td>
               <td className={`num cv-col ${cvSharedOf(row) ? '' : 'is-zero'}`}>{cvSharedOf(row) ? formatNumber(cvSharedOf(row)) : '—'}</td>
-              {!narrow && (
-                <td className="followup-cell" colSpan={2}>
-                  {followUps(row)}
-                </td>
-              )}
+              <td className="found-col">{row.foundBy || NOT_RECORDED}</td>
             </tr>
           ))}
       </Fragment>
@@ -385,7 +378,7 @@ export default function PerformanceReport() {
           </div>
         ) : view === 'people' ? (
           <div className={`table-wrap ${perf.loading ? 'is-loading' : ''}`}>
-            <table className={`data-table perf-table ${narrow ? '' : 'with-followup'}`}>
+            <table className="data-table perf-table">
               <thead>
                 <tr>
                   <th scope="col">Person, then course, company and job</th>
@@ -407,12 +400,9 @@ export default function PerformanceReport() {
                   <th scope="col" className="num cv-col" title="CVs shared on these numbers and emails: each student whose call ended in CV shared">
                     CV shared
                   </th>
-                  {!narrow && (
-                    <>
-                      <th scope="col">Assigned to</th>
-                      <th scope="col">Remark</th>
-                    </>
-                  )}
+                  <th scope="col" className="found-col" title="Where most of these numbers and emails were found: the Found by chosen when adding them">
+                    Mostly found by
+                  </th>
                 </tr>
               </thead>
               <tbody>{tree.map(renderNode)}</tbody>
@@ -425,12 +415,7 @@ export default function PerformanceReport() {
                   <td className="num">{formatNumber(totals.jobs)}</td>
                   <td className={`num given-col ${totals.assigned ? '' : 'is-zero'}`}>{formatNumber(totals.assigned)}</td>
                   <td className={`num cv-col ${totals.cvShared ? '' : 'is-zero'}`}>{formatNumber(totals.cvShared)}</td>
-                  {!narrow && (
-                    <>
-                      <td>{progress(totals.assigned, totals.total)}</td>
-                      <td>{progress(totals.remarked, totals.total)}</td>
-                    </>
-                  )}
+                  <td className="found-col">{mostlyFound(totals.sources, totals.total)}</td>
                 </tr>
               </tfoot>
             </table>
