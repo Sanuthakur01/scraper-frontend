@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError, sendJson, useApi } from '@/lib/api';
 import { usePressAction } from '@/lib/pressAction';
@@ -20,8 +20,10 @@ import {
   ContactIcons,
   draftFrom,
   EntryList,
+  ERROR_ORDER,
   errorFromServer,
-  FIELD_ORDER,
+  FOUND_BY,
+  foundByLabel,
   LIST_ORDER,
   LISTS,
   profileLabel,
@@ -33,25 +35,7 @@ import {
   type FieldKey,
   type ListKey,
 } from './ContactForm';
-import {
-  AlertIcon,
-  BriefcaseIcon,
-  BuildingIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  CloseIcon,
-  CopyIcon,
-  ExternalIcon,
-  LinkIcon,
-  MailIcon,
-  MapPinIcon,
-  NoteIcon,
-  PencilIcon,
-  PhoneIcon,
-  PlusIcon,
-  UserIcon,
-  UsersIcon,
-} from './Icons';
+import { AlertIcon, BriefcaseIcon, BuildingIcon, CheckIcon, ChevronRightIcon, CloseIcon, CopyIcon, ExternalIcon, LinkIcon, MailIcon, MapPinIcon, NoteIcon, PencilIcon, PhoneIcon, PlusIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
 import { SectionError } from './PageParts';
 
 // The icon beside each list of boxes while editing.
@@ -284,6 +268,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
   const titleId = useId();
   const contactId = useId();
   const factsId = useId();
+  const foundById = useId();
   const labelIds = { hrName: useId(), hrProfile: useId(), phone: useId(), email: useId(), assignedTo: useId(), remarks: useId() };
   const notesErrorId = useId();
 
@@ -366,14 +351,14 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
     setFocusOn(`${key}-${draft[key].length}`);
   };
   const focusField = (found: FieldErrors) => {
-    const field = FIELD_ORDER.find((key) => found[key]);
+    const field = ERROR_ORDER.find((key) => found[key]);
     if (field) setFocusOn(field === 'remarks' ? 'remarks' : `${field}-${found[field]?.index ?? 0}`);
   };
 
   const save = async () => {
     if (!draft || savingNow.current || !changed) return;
-    const found = validateDraft(draft);
-    if (FIELD_ORDER.some((key) => found[key])) {
+    const found = validateDraft(draft, original);
+    if (ERROR_ORDER.some((key) => found[key])) {
       setErrors(found);
       setFailure(null);
       focusField(found);
@@ -392,7 +377,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
       const message = (err as Error).message;
       const detail = err instanceof ApiError ? err.detail : '';
       const fieldErrors = errorFromServer(message, detail, draft);
-      if (FIELD_ORDER.some((key) => fieldErrors[key])) {
+      if (ERROR_ORDER.some((key) => fieldErrors[key])) {
         setErrors(fieldErrors);
         focusField(fieldErrors);
       } else {
@@ -493,21 +478,64 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                     </div>
                   )}
                   {LIST_ORDER.map((key) => (
-                    <div className="edit-field" key={key}>
-                      <span className="edit-label" id={labelIds[key]}>
-                        {LIST_ICONS[key]}
-                        {LISTS[key].label}
-                      </span>
-                      <EntryList
-                        kind={key}
-                        values={draft[key]}
-                        jobTitle={job.title}
-                        error={errors[key]}
-                        labelledBy={labelIds[key]}
-                        onChange={changeList(key)}
-                        onAdd={addBox(key)}
-                      />
-                    </div>
+                    <Fragment key={key}>
+                      <div className="edit-field">
+                        <span className="edit-label" id={labelIds[key]}>
+                          {LIST_ICONS[key]}
+                          {LISTS[key].label}
+                        </span>
+                        <EntryList
+                          kind={key}
+                          values={draft[key]}
+                          jobTitle={job.title}
+                          error={errors[key]}
+                          labelledBy={labelIds[key]}
+                          onChange={changeList(key)}
+                          onAdd={addBox(key)}
+                        />
+                      </div>
+                      {/* Where the HR contact was found: right after the contact fields, needed to save them. */}
+                      {key === 'email' && (
+                        <div className="edit-field">
+                          <label className="edit-label" htmlFor={foundById}>
+                            <TargetIcon size={14} />
+                            Found by
+                            <span className="required-mark" aria-hidden="true">
+                              *
+                            </span>
+                          </label>
+                          <select
+                            id={foundById}
+                            data-entry="foundBy-0"
+                            className={`select found-by-select ${errors.foundBy ? 'has-error' : ''} ${draft.foundBy ? '' : 'is-empty'}`}
+                            value={draft.foundBy}
+                            onChange={(e) => {
+                              const foundBy = e.target.value;
+                              setDraft((d) => (d ? { ...d, foundBy } : d));
+                              setErrors((errs) => ({ ...errs, foundBy: undefined }));
+                            }}
+                            aria-invalid={Boolean(errors.foundBy) || undefined}
+                            aria-describedby={`${foundById}-note`}
+                          >
+                            <option value="">Choose where you found the HR contact…</option>
+                            {FOUND_BY.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.foundBy ? (
+                            <p className="field-error" id={`${foundById}-note`} role="alert">
+                              {errors.foundBy.message}
+                            </p>
+                          ) : (
+                            <p className="edit-hint" id={`${foundById}-note`}>
+                              Needed to save HR names, profile links, phone numbers and emails.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </Fragment>
                   ))}
                   <div className="edit-field">
                     <label className="edit-label" id={labelIds.remarks} htmlFor={`${labelIds.remarks}-box`}>
@@ -654,6 +682,16 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                       )}
                     </dd>
                   </div>
+                  {contact.foundBy && (
+                    <div className="contact-row">
+                      <dt>
+                        <TargetIcon size={14} /> Found by
+                      </dt>
+                      <dd>
+                        <span className="found-by-tag">{foundByLabel(contact.foundBy) || contact.foundBy}</span>
+                      </dd>
+                    </div>
+                  )}
                   <div className="contact-row">
                     <dt>
                       <UsersIcon size={14} /> Assigned to

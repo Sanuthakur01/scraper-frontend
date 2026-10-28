@@ -13,6 +13,20 @@ export const LIST_ORDER: ListKey[] = ['hrName', 'hrProfile', 'phone', 'email', '
 export const FIELD_ORDER: FieldKey[] = [...LIST_ORDER, 'remarks'];
 
 export const PHONE_EXISTS = 'This number already exists.'; // the server's PHONE_EXISTS
+
+// Where the research team found a job's HR contact (the server's HR_SOURCES): needed to save HR contact details
+// that are added or changed.
+export const FOUND_BY: { id: string; label: string }[] = [
+  { id: 'signalhire', label: 'SignalHire' },
+  { id: 'apollo', label: 'Apollo' },
+  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'naukri', label: 'Naukri' },
+  { id: 'indeed', label: 'Indeed' },
+];
+export const foundByLabel = (id?: string) => FOUND_BY.find((o) => o.id === id)?.label ?? '';
+// What can have a problem: each field, and Found by; in the form's order (the first one gets the cursor).
+export type ErrorKey = FieldKey | 'foundBy';
+export const ERROR_ORDER: ErrorKey[] = ['hrName', 'hrProfile', 'phone', 'email', 'foundBy', 'assignedTo', 'remarks'];
 export const REMARKS_LIMIT = 1000;
 const NAME_LIMIT = 60;
 const EMAIL_LIMIT = 120;
@@ -58,6 +72,7 @@ const boxesFor = (values: string[]) => (values.length ? [...values] : ['']);
 export const draftFrom = (contact: JobContact): FollowUpInput => ({
   hrName: boxesFor(contact.hrNames ?? []),
   hrProfile: boxesFor(contact.hrProfiles ?? []),
+  foundBy: contact.foundBy ?? '',
   phone: boxesFor(splitList(contact.phone)),
   email: boxesFor(splitList(contact.email)),
   assignedTo: boxesFor(contact.assignedTo),
@@ -72,6 +87,7 @@ const normalized = (draft: FollowUpInput) =>
   JSON.stringify({
     hrName: draft.hrName.map(clean).filter(Boolean),
     hrProfile: draft.hrProfile.map(clean).filter(Boolean),
+    foundBy: draft.foundBy,
     phone: draft.phone.map(clean).filter(Boolean),
     email: draft.email.map(clean).filter(Boolean),
     assignedTo: draft.assignedTo.map(clean).filter(Boolean),
@@ -79,19 +95,29 @@ const normalized = (draft: FollowUpInput) =>
   });
 export const sameDraft = (a: FollowUpInput, b: FollowUpInput) => normalized(a) === normalized(b);
 
+// The HR contact details alone, compared the way the server does (a number by its digits, an email in any case).
+const contactsKey = (draft: FollowUpInput) =>
+  JSON.stringify([
+    draft.hrName.map(clean).filter(Boolean).map((v) => v.toLowerCase()),
+    draft.hrProfile.map(clean).filter(Boolean).map((v) => v.toLowerCase()),
+    draft.phone.map(clean).filter(Boolean).map((v) => v.replace(/\D/g, '').slice(-10)),
+    draft.email.map(clean).filter(Boolean).map((v) => v.toLowerCase()),
+  ]);
+
 // A field's problem: the message, sometimes a second line, and which box (if one is to blame).
 export interface FieldError {
   message: string;
   detail?: string;
   index?: number;
 }
-export type FieldErrors = Partial<Record<FieldKey, FieldError>>;
+export type FieldErrors = Partial<Record<ErrorKey, FieldError>>;
 
 const quote = (text: string) => `"${text.length > 40 ? `${text.slice(0, 40)}…` : text}"`;
 const unique = (values: string[], key: (v: string) => string) => new Set(values.map(key)).size;
 
-// Checks a draft the way the server will. Returns the first problem of each field (none: {}).
-export function validateDraft(draft: FollowUpInput): FieldErrors {
+// Checks a draft the way the server will. Returns the first problem of each field (none: {}). original: the
+// details as saved; HR contacts added or changed need Found by (without it: always, if there are contacts).
+export function validateDraft(draft: FollowUpInput, original?: FollowUpInput): FieldErrors {
   const errors: FieldErrors = {};
   const digits = (p: string) => p.replace(/\D/g, '').length;
 
@@ -164,6 +190,11 @@ export function validateDraft(draft: FollowUpInput): FieldErrors {
     errors.assignedTo = { message: `At most ${MAX_STUDENTS} students per job.` };
   }
 
+  const hasContacts = hrNames.length || links.length || phones.length || emails.length;
+  if (hasContacts && !draft.foundBy && (!original || contactsKey(draft) !== contactsKey(original))) {
+    errors.foundBy = { message: 'Choose where the HR contact was found.' };
+  }
+
   if (cleanRemarks(draft.remarks).length > REMARKS_LIMIT) {
     errors.remarks = { message: `Notes are too long (at most ${formatLimit(REMARKS_LIMIT)} characters).` };
   }
@@ -184,7 +215,8 @@ export function errorFromServer(message: string, detail: string, draft: FollowUp
     return { phone: { message, detail, index: boxWith('phone', detail.split(' is already')[0]) } };
   }
   const quoted = message.match(/"([^"]+)"/)?.[1];
-  const prefixes: [string, FieldKey][] = [
+  const prefixes: [string, ErrorKey][] = [
+    ['Found by:', 'foundBy'],
     ['HR name:', 'hrName'],
     ['HR profile:', 'hrProfile'],
     ['Phone:', 'phone'],
@@ -195,7 +227,7 @@ export function errorFromServer(message: string, detail: string, draft: FollowUp
   for (const [prefix, key] of prefixes) {
     if (!message.startsWith(prefix)) continue;
     const text = key === 'remarks' ? message.replace(/^Remarks/, 'Notes') : message.slice(prefix.length).trim();
-    return { [key]: { message: text, detail, index: key === 'remarks' ? undefined : boxWith(key, quoted) } };
+    return { [key]: { message: text, detail, index: key === 'remarks' || key === 'foundBy' ? undefined : boxWith(key, quoted) } };
   }
   return {};
 }

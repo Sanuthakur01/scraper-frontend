@@ -1402,7 +1402,8 @@ button.kpi-total:hover {
 
 a.kpi-course:active,
 button.kpi-total:active,
-button.kpi-action:active:not(:disabled) {
+button.kpi-action:active:not(:disabled),
+a.kpi-action:active {
   transform: translateY(0) scale(0.99);
 }
 
@@ -1416,7 +1417,14 @@ button.kpi-action {
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background 0.15s;
 }
 
-button.kpi-action:hover:not(:disabled) {
+/* A card that opens another page (ServiceNow Openings on Hiring partners): the same, as a link */
+a.kpi-action {
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+button.kpi-action:hover:not(:disabled),
+a.kpi-action:hover {
   border-color: color-mix(in srgb, var(--course, var(--accent)) 55%, var(--material-border));
   box-shadow: inset 0 1px 0 var(--material-highlight), var(--shadow-md);
   transform: translateY(-2px);
@@ -1447,6 +1455,10 @@ button.kpi-action:disabled {
 
 button.kpi-action:not([aria-pressed='true']):hover .kpi-cta svg {
   transform: translateY(2px);
+}
+
+a.kpi-action:hover .kpi-cta svg {
+  transform: translateX(2px);
 }
 
 .kpi-share {
@@ -2378,7 +2390,8 @@ button.kpi-total:hover .kpi-go {
 /* ---------- Job list ---------- */
 
 /* When a card or a chart opens the list, its top stops below the sticky top bar */
-#jobs {
+#jobs,
+#companies {
   scroll-margin-top: 96px;
 }
 
@@ -6374,6 +6387,45 @@ html:has(.job-modal[open]) {
   color: var(--accent-text);
 }
 
+/* A field that must be filled to save (Found by) */
+.required-mark {
+  color: var(--bad-text);
+  font-weight: 700;
+}
+
+.edit-hint {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* Found by: where the HR contact was found (a dropdown; needed for new or changed HR contacts) */
+.found-by-select {
+  width: 100%;
+  max-width: 320px;
+}
+
+.found-by-select.is-empty {
+  color: var(--text-muted);
+}
+
+.found-by-select.has-error {
+  border-color: var(--bad-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad-text) 18%, transparent);
+}
+
+.found-by-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+}
+
 .field-error {
   margin: 0;
   font-size: var(--text-footnote);
@@ -7224,7 +7276,8 @@ html:has(.job-modal[open]) {
   .activity-day-title {
     position: static;
   }
-  #jobs {
+  #jobs,
+  #companies {
     scroll-margin-top: 128px;
   }
 }
@@ -7245,7 +7298,8 @@ html:has(.job-modal[open]) {
     width: 100%;
     grid-template-columns: repeat(3, 1fr);
   }
-  #jobs {
+  #jobs,
+  #companies {
     scroll-margin-top: 180px; /* the bar is a row taller here */
   }
   .app-footer-inner {

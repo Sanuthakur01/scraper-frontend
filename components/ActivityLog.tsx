@@ -7,7 +7,7 @@ import { COURSE_COLORS, dayHeading, formatDateTime, formatNumber, formatTime, is
 import { signInHeader } from '@/lib/session';
 import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
 import Avatar from './Avatar';
-import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, UserIcon, UsersIcon } from './Icons';
+import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 
@@ -16,6 +16,7 @@ const PAGE = 30; // changes loaded at a time
 const FIELDS: Record<ActivityChange['field'], { label: string; icon: ReactNode }> = {
   hrName: { label: 'HR name', icon: <UserIcon size={13} /> },
   hrProfile: { label: 'HR profile', icon: <LinkIcon size={13} /> },
+  foundBy: { label: 'Found by', icon: <TargetIcon size={13} /> },
   phone: { label: 'Phone', icon: <PhoneIcon size={13} /> },
   email: { label: 'Email', icon: <MailIcon size={13} /> },
   assignedTo: { label: 'Assigned to', icon: <UsersIcon size={13} /> },

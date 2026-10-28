@@ -11,7 +11,7 @@ import ThemeToggle from './ThemeToggle';
 const PAGES: { href: string; label: string; short: string; matches: (path: string) => boolean }[] = [
   { href: '/', label: 'Dashboard', short: 'Dashboard', matches: (path) => path === '/' || path.startsWith('/course') },
   { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
-  { href: '/partners', label: 'Hiring partners', short: 'Partners', matches: (path) => path.startsWith('/partners') },
+  { href: '/partners', label: 'Hiring partners', short: 'Partners', matches: (path) => path.startsWith('/partners') || path.startsWith('/servicenow') },
   { href: '/activity', label: 'Activity', short: 'Activity', matches: (path) => path.startsWith('/activity') },
   { href: '/review', label: 'Review board', short: 'Review', matches: (path) => path.startsWith('/review') || path.startsWith('/assign') },
 ];

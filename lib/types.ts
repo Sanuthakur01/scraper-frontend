@@ -259,6 +259,7 @@ export type ContactSource = 'manual' | 'posting' | null;
 export interface JobContact {
   hrNames?: string[]; // the HR people's names (typed in; missing from a server older than this dashboard)
   hrProfiles?: string[]; // links to their profiles, e.g. LinkedIn (always http/https)
+  foundBy?: string; // where the HR contact was found (ContactForm FOUND_BY); '' or missing: not said
   phone: string;
   phoneSource: ContactSource;
   email: string;
@@ -273,6 +274,7 @@ export interface JobContact {
 export interface FollowUpInput {
   hrName: string[]; // one box per HR person
   hrProfile: string[]; // one box per profile link
+  foundBy: string; // where the HR contact was found ('' = not chosen): needed when HR contacts are added or changed
   phone: string[];
   email: string[];
   remarks: string;
@@ -305,7 +307,7 @@ export type ActivityAction = 'added' | 'edited' | 'removed';
 
 export interface ActivityChange {
   // contactStudent / contactRemark: the performance report's follow-up of one number or email (contact)
-  field: 'hrName' | 'hrProfile' | 'phone' | 'email' | 'assignedTo' | 'remarks' | 'contactStudent' | 'contactRemark';
+  field: 'hrName' | 'hrProfile' | 'phone' | 'email' | 'foundBy' | 'assignedTo' | 'remarks' | 'contactStudent' | 'contactRemark';
   change: ActivityAction;
   before: string[]; // the values before (notes: one value)
   after: string[];

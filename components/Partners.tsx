@@ -1,17 +1,45 @@
 'use client';
 
-import { Fragment, useState, type CSSProperties, type MouseEvent } from 'react';
+import Link from 'next/link';
+import { Fragment, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDate, formatNumber, percent, shownCities } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse, RoleJobsResponse } from '@/lib/types';
 import CompanyJobs from './CompanyJobs';
-import { BriefcaseIcon, BuildingIcon, ChevronRightIcon, DownloadIcon, LayersIcon, PhoneIcon, SearchIcon } from './Icons';
+import { ArrowDownIcon, ArrowRightIcon, BriefcaseIcon, BuildingIcon, CheckIcon, ChevronRightIcon, DownloadIcon, LayersIcon, PhoneIcon, SearchIcon } from './Icons';
 import { CardHeader, Freshness, PageError, PageHeader, PageSkeleton, Segmented } from './PageParts';
 
 const SHOWN = 25; // companies listed before "Show all"
 
 type ContactFilter = 'all' | 'with' | 'without';
 const hasContact = (p: Partner) => p.phones.length > 0 || p.emails.length > 0;
+
+// A number box that, when clicked, lists the companies it counts in the Companies list below.
+function ShowBox({ icon, name, value, note, cta, active, onClick }: { icon: ReactNode; name: string; value: ReactNode; note: ReactNode; cta: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className="kpi kpi-action" aria-pressed={active} onClick={onClick}>
+      <span className="kpi-top">
+        <span className="kpi-badge" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="kpi-name">{name}</span>
+      </span>
+      <span className="kpi-value">{value}</span>
+      <span className="kpi-period">{note}</span>
+      <span className="kpi-cta">
+        {active ? (
+          <>
+            <CheckIcon size={14} /> Showing below
+          </>
+        ) : (
+          <>
+            {cta} <ArrowDownIcon size={14} />
+          </>
+        )}
+      </span>
+    </button>
+  );
+}
 
 // Companies that keep posting openings for the courses: who to approach for hiring partnerships. A
 // company's row opens its openings right under it (CompanyJobs), with a pill per course.
@@ -51,6 +79,16 @@ export default function Partners() {
     setContactFilter(value);
     setShowAll(false);
   };
+  // A box was clicked: every company it counts (no search, not just the top 25), scrolled into view.
+  const showCompanies = (value: ContactFilter) => {
+    setContactFilter(value);
+    setSearch('');
+    setShowAll(true);
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('companies')?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+  };
+  const showing = (value: ContactFilter) => contactFilter === value && !query && showAll;
+  const serviceNowNote = serviceNow.error ? 'Could not load the count' : 'with ServiceNow in the job title';
 
   return (
     <main className="page">
@@ -65,52 +103,69 @@ export default function Partners() {
         </span>
       </PageHeader>
 
+      {/* The first three list what they count in Companies below; ServiceNow opens its own page, for the
+          same period as its count. */}
       <section className="kpis kpis-4" aria-label="Summary">
-        <div className="kpi">
-          <div className="kpi-top">
-            <span className="kpi-badge" aria-hidden="true">
-              <BuildingIcon size={16} />
+        <ShowBox
+          icon={<BuildingIcon size={16} />}
+          name="Companies hiring again and again"
+          value={formatNumber(data.partners.length)}
+          note={`with ${data.minOpenings} or more openings`}
+          cta="Show these companies"
+          active={showing('all')}
+          onClick={() => showCompanies('all')}
+        />
+        <ShowBox
+          icon={<BriefcaseIcon size={16} />}
+          name="Openings from them"
+          value={formatNumber(openings)}
+          note={`${percent(openings, data.jobs)} of all openings`}
+          cta="See them by company"
+          active={showing('all')}
+          onClick={() => showCompanies('all')}
+        />
+        <ShowBox
+          icon={<PhoneIcon size={16} />}
+          name="With an HR contact"
+          value={
+            <>
+              {formatNumber(withContact)} <span className="kpi-of">of {formatNumber(data.partners.length)}</span>
+            </>
+          }
+          note="Add contacts in any course's job list"
+          cta="Show these companies"
+          active={showing('with')}
+          onClick={() => showCompanies('with')}
+        />
+        {serviceNow.data ? (
+          <Link className="kpi kpi-action" href={`/servicenow?from=${serviceNow.data.from}&to=${serviceNow.data.to}`}>
+            <span className="kpi-top">
+              <span className="kpi-badge" aria-hidden="true">
+                <LayersIcon size={16} />
+              </span>
+              <span className="kpi-name">ServiceNow Openings</span>
             </span>
-            <span className="kpi-name">Companies hiring again and again</span>
-          </div>
-          <p className="kpi-value">{formatNumber(data.partners.length)}</p>
-          <p className="kpi-period">with {data.minOpenings} or more openings</p>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <span className="kpi-badge" aria-hidden="true">
-              <BriefcaseIcon size={16} />
+            <span className="kpi-value">{formatNumber(serviceNow.data.total)}</span>
+            <span className="kpi-period">{serviceNowNote}</span>
+            <span className="kpi-cta">
+              See the openings <ArrowRightIcon size={14} />
             </span>
-            <span className="kpi-name">Openings from them</span>
+          </Link>
+        ) : (
+          <div className="kpi">
+            <div className="kpi-top">
+              <span className="kpi-badge" aria-hidden="true">
+                <LayersIcon size={16} />
+              </span>
+              <span className="kpi-name">ServiceNow Openings</span>
+            </div>
+            <p className="kpi-value">—</p>
+            <p className="kpi-period">{serviceNowNote}</p>
           </div>
-          <p className="kpi-value">{formatNumber(openings)}</p>
-          <p className="kpi-period">{percent(openings, data.jobs)} of all openings</p>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <span className="kpi-badge" aria-hidden="true">
-              <PhoneIcon size={16} />
-            </span>
-            <span className="kpi-name">With an HR contact</span>
-          </div>
-          <p className="kpi-value">
-            {formatNumber(withContact)} <span className="kpi-of">of {formatNumber(data.partners.length)}</span>
-          </p>
-          <p className="kpi-period">Add contacts in any course&apos;s job list</p>
-        </div>
-        <div className="kpi kpi-servicenow">
-          <div className="kpi-top">
-            <span className="kpi-badge" aria-hidden="true">
-              <LayersIcon size={16} />
-            </span>
-            <span className="kpi-name">ServiceNow Openings</span>
-          </div>
-          <p className="kpi-value">{serviceNow.data ? formatNumber(serviceNow.data.total) : '—'}</p>
-          <p className="kpi-period">{serviceNow.error ? 'Could not load the count' : 'with ServiceNow in the job title'}</p>
-        </div>
+        )}
       </section>
 
-      <section className="card card-flush">
+      <section className="card card-flush" id="companies">
         <CardHeader
           icon={<BuildingIcon />}
           title={

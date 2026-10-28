@@ -5,7 +5,20 @@ import { ApiError, sendJson } from '@/lib/api';
 import { formatNumber } from '@/lib/format';
 import { usePressAction } from '@/lib/pressAction';
 import type { Job } from '@/lib/types';
-import { draftFrom, errorFromServer, LISTS, profileLabel, REMARKS_LIMIT, splitList, validateDraft, type FieldError, type FieldKey } from './ContactForm';
+import {
+  draftFrom,
+  errorFromServer,
+  FOUND_BY,
+  LISTS,
+  profileLabel,
+  REMARKS_LIMIT,
+  splitList,
+  validateDraft,
+  type ErrorKey,
+  type FieldError,
+  type FieldErrors,
+  type FieldKey,
+} from './ContactForm';
 import { CheckIcon, CloseIcon, ExternalIcon, LinkIcon, MailIcon, NoteIcon, PencilIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
 
 // One column of the job list's HR details. "HR contact" holds three fields (HR names, phone numbers,
@@ -72,8 +85,8 @@ function valuesOf(job: Job, field: FieldKey): string[] {
 const textOf = (job: Job, field: FieldKey) => (field === 'remarks' ? job.contact.remarks : valuesOf(job, field).join('\n'));
 
 // The problems that belong to this column's fields.
-function onlyFields(errors: Partial<Record<FieldKey, FieldError>>, fields: FieldKey[]) {
-  const mine: Partial<Record<FieldKey, FieldError>> = {};
+function onlyFields(errors: FieldErrors, fields: ErrorKey[]) {
+  const mine: FieldErrors = {};
   for (const field of fields) if (errors[field]) mine[field] = errors[field];
   return mine;
 }
@@ -124,7 +137,12 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
   const grouped = fields.length > 1;
   const originals = Object.fromEntries(fields.map((field) => [field, textOf(job, field)])) as Record<FieldKey, string>;
   const [texts, setTexts] = useState(originals);
-  const [errors, setErrors] = useState<Partial<Record<FieldKey, FieldError>>>({});
+  const [errors, setErrors] = useState<FieldErrors>({});
+  // HR contact columns: where the contact was found, needed when they are added or changed.
+  const contactColumn = fields.some((field) => field !== 'assignedTo' && field !== 'remarks');
+  const savedFoundBy = job.contact.foundBy ?? '';
+  const [foundBy, setFoundBy] = useState(savedFoundBy);
+  const foundBySelect = useRef<HTMLSelectElement>(null);
   const [failure, setFailure] = useState<FieldError | null>(null); // a refusal that isn't about one of these fields
   const [saving, setSaving] = useState(false);
   const savingNow = useRef(false); // set at once (state shows on the next render): never two saves at a time
@@ -135,8 +153,12 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
   const pencil = useRef<HTMLButtonElement>(null);
   const baseId = useId();
 
-  const changed = fields.some((field) => texts[field] !== originals[field]);
-  const focusBox = (field: FieldKey | undefined) => {
+  const changed = fields.some((field) => texts[field] !== originals[field]) || (contactColumn && foundBy !== savedFoundBy);
+  const focusBox = (field: ErrorKey | undefined) => {
+    if (field === 'foundBy') {
+      foundBySelect.current?.focus();
+      return;
+    }
     const el = field && boxes.current[field];
     if (!el) return;
     el.focus();
@@ -147,6 +169,7 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
   useEffect(() => {
     if (!editing) return;
     setTexts(originals);
+    setFoundBy(savedFoundBy);
     setErrors({});
     setFailure(null);
     focusBox(fields[0]);
@@ -187,11 +210,13 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
       if (field === 'remarks') draft.remarks = texts.remarks;
       else draft[field] = texts[field].split('\n');
     }
-    const problems = onlyFields(validateDraft(draft), fields);
+    if (contactColumn) draft.foundBy = foundBy;
+    const checked: ErrorKey[] = contactColumn ? [...fields, 'foundBy'] : fields;
+    const problems = onlyFields(validateDraft(draft, draftFrom(job.contact)), checked);
     if (Object.keys(problems).length) {
       setErrors(problems);
       setFailure(null);
-      focusBox(fields.find((field) => problems[field]));
+      focusBox(checked.find((field) => problems[field]));
       return;
     }
     savingNow.current = true;
@@ -207,10 +232,10 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
     } catch (err) {
       const message = (err as Error).message;
       const detail = err instanceof ApiError ? err.detail : '';
-      const forFields = onlyFields(errorFromServer(message, detail, draft), fields);
+      const forFields = onlyFields(errorFromServer(message, detail, draft), checked);
       if (Object.keys(forFields).length) {
         setErrors(forFields);
-        focusBox(fields.find((field) => forFields[field]));
+        focusBox(checked.find((field) => forFields[field]));
       } else {
         setFailure({ message, detail });
         focusBox(fields[0]);
@@ -283,6 +308,38 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
               </div>
             );
           })}
+          {contactColumn && (
+            <div className="cell-field">
+              <label className="cell-field-label" htmlFor={`${baseId}-found-by`}>
+                Found by <span className="required-mark" aria-hidden="true">*</span>
+              </label>
+              <select
+                ref={foundBySelect}
+                id={`${baseId}-found-by`}
+                className={`select found-by-select ${errors.foundBy ? 'has-error' : ''} ${foundBy ? '' : 'is-empty'}`}
+                value={foundBy}
+                onChange={(e) => {
+                  setFoundBy(e.target.value);
+                  setErrors((errs) => ({ ...errs, foundBy: undefined }));
+                }}
+                aria-invalid={errors.foundBy ? true : undefined}
+                aria-describedby={errors.foundBy ? `${baseId}-found-by-error` : undefined}
+                disabled={saving}
+              >
+                <option value="">Choose where you found it…</option>
+                {FOUND_BY.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              {errors.foundBy && (
+                <p className="field-error" id={`${baseId}-found-by-error`} role="alert">
+                  {errors.foundBy.message}
+                </p>
+              )}
+            </div>
+          )}
           <p className="cell-hint" id={`${baseId}-hint`}>
             {fields.includes('remarks')
               ? `${formatNumber(texts.remarks.trim().length)} / ${formatNumber(REMARKS_LIMIT)}`
