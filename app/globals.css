@@ -1106,7 +1106,7 @@ h1 {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 15; /* under the sticky top bar (20) */
+  z-index: 16; /* over the dashboard's search box under it (15), under the sticky top bar (20) */
   display: grid;
   gap: 16px;
   width: 340px;
