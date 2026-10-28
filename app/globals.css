@@ -3727,6 +3727,46 @@ button.rank-row:disabled {
   background: var(--surface-2);
 }
 
+/* "CV shared": the column in green at every level, so it stands out; none yet in grey */
+.perf-table .cv-col {
+  background: color-mix(in srgb, var(--good-bg) 85%, transparent);
+  color: var(--good-text);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.perf-table thead th.cv-col {
+  background: var(--good-bg);
+  color: var(--good-text);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--good-text) 45%, transparent);
+}
+
+.perf-table tfoot td.cv-col {
+  background: var(--good-bg);
+}
+
+.perf-table .cv-col.is-zero {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.perf-table .perf-leaf td.cv-col,
+.perf-table .perf-leaf td.given-col {
+  width: auto;
+}
+
+/* "Given to students": how many of the numbers went to a student */
+.perf-table .given-col {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+}
+
+.perf-table .given-col.is-zero {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* Each level is indented under the one above it (--depth: 0 for a person) */
 .perf-name {
   display: flex;

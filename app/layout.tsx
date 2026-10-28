@@ -24,7 +24,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>
+      {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen) add attributes to <body> before React loads. */}
+      <body suppressHydrationWarning>
         {/* Sign-in first: nothing below (or its data) loads until the person has an allowed role. */}
         <AuthGate>
           <DataViewProvider>

@@ -5,7 +5,7 @@ import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type
 import { useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, percent, periodFrom, periodParams, type Period } from '@/lib/format';
-import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
+import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, cvSharedOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type PerfNode } from '@/lib/performance';
 import type { Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
 import { useFollowUps } from '@/lib/useFollowUps';
 import { useAccess } from './AuthGate';
@@ -144,7 +144,6 @@ export default function PerformanceReport() {
   const courses = meta.data.courses;
   const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? id;
   const totals = countsOf(rows);
-  const top = Math.max(1, ...tree.map((p) => p.total));
   const since = data?.since ?? null;
   const today = istDayOf(new Date().toISOString());
   const startsBeforeTracking = since && data && data.from < istDayOf(since);
@@ -220,18 +219,11 @@ export default function PerformanceReport() {
           <td className="num hide-sm">{formatNumber(node.phones)}</td>
           <td className="num hide-sm">{formatNumber(node.emails)}</td>
           <td className="num">
-            {node.level === 'person' ? (
-              <span className="cell-bar">
-                <span className="cell-bar-track" aria-hidden="true">
-                  <span className="cell-bar-fill" style={{ width: `${(node.total / top) * 100}%` }} />
-                </span>
-                <span className="big-num">{formatNumber(node.total)}</span>
-              </span>
-            ) : (
-              <span className="strong">{formatNumber(node.total)}</span>
-            )}
+            <span className={node.level === 'person' ? 'big-num' : 'strong'}>{formatNumber(node.total)}</span>
           </td>
           <td className="num">{formatNumber(node.jobs)}</td>
+          <td className={`num given-col ${node.assigned ? '' : 'is-zero'}`}>{formatNumber(node.assigned)}</td>
+          <td className={`num cv-col ${node.cvShared ? '' : 'is-zero'}`}>{formatNumber(node.cvShared)}</td>
           {!narrow && (
             <>
               <td>{progress(node.assigned, node.total)}</td>
@@ -261,6 +253,8 @@ export default function PerformanceReport() {
                   </div>
                 )}
               </td>
+              <td className={`num given-col ${hasStudent(row) ? '' : 'is-zero'}`}>{hasStudent(row) ? '1' : '—'}</td>
+              <td className={`num cv-col ${cvSharedOf(row) ? '' : 'is-zero'}`}>{cvSharedOf(row) ? formatNumber(cvSharedOf(row)) : '—'}</td>
               {!narrow && (
                 <td className="followup-cell" colSpan={2}>
                   {followUps(row)}
@@ -325,7 +319,7 @@ export default function PerformanceReport() {
           }
           description={
             view === 'people'
-              ? "Most first. Each number and email counts once; one already in the job post doesn't count."
+              ? "Most first. Each number and email counts once; one already in the job post doesn't count. CV shared: the CVs shared on them so far."
               : 'Every number and email once, newest first. Give each to one or more students and pick the remark on each call: each saves by itself.'
           }
           actions={
@@ -407,6 +401,12 @@ export default function PerformanceReport() {
                   <th scope="col" className="num">
                     Jobs
                   </th>
+                  <th scope="col" className="num given-col" title="How many of these numbers and emails are given to at least one student">
+                    Given to students
+                  </th>
+                  <th scope="col" className="num cv-col" title="CVs shared on these numbers and emails: each student whose call ended in CV shared">
+                    CV shared
+                  </th>
                   {!narrow && (
                     <>
                       <th scope="col">Assigned to</th>
@@ -423,6 +423,8 @@ export default function PerformanceReport() {
                   <td className="num hide-sm">{formatNumber(totals.emails)}</td>
                   <td className="num">{formatNumber(totals.total)}</td>
                   <td className="num">{formatNumber(totals.jobs)}</td>
+                  <td className={`num given-col ${totals.assigned ? '' : 'is-zero'}`}>{formatNumber(totals.assigned)}</td>
+                  <td className={`num cv-col ${totals.cvShared ? '' : 'is-zero'}`}>{formatNumber(totals.cvShared)}</td>
                   {!narrow && (
                     <>
                       <td>{progress(totals.assigned, totals.total)}</td>

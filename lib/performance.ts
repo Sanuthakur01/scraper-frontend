@@ -34,6 +34,8 @@ export const hasStudent = (row: Pick<PerformanceRow, 'outcomes'>) => followUpsOf
 export const needsRemark = (row: Pick<PerformanceRow, 'outcomes'>) =>
   !followUpsOf(row).some((o) => o.status) || followUpsOf(row).some((o) => o.student && !o.status);
 export const hasRemark = (row: Pick<PerformanceRow, 'outcomes'>, status: RemarkStatus) => followUpsOf(row).some((o) => o.status === status);
+// CVs shared on a number: its students whose call ended in "CV shared".
+export const cvSharedOf = (row: Pick<PerformanceRow, 'outcomes'>) => followUpsOf(row).filter((o) => o.status === 'cv-shared').length;
 
 // One change to a number's follow-ups: give it to a student, take it back, or the remark of a student's call
 // (student '': the number's own remark while no student has it).
@@ -110,6 +112,7 @@ export interface Counts {
   jobs: number; // different jobs they were added to
   assigned: number; // of total: given to a student
   remarked: number; // of total: with a remark
+  cvShared: number; // CVs shared on them: each student's call that ended in "CV shared" (two students: two)
 }
 
 export interface PerfNode extends Counts {
@@ -133,6 +136,7 @@ export function countsOf(rows: PerformanceRow[]): Counts {
     jobs: new Set(rows.map((r) => String(r.job.id))).size,
     assigned: rows.filter(hasStudent).length,
     remarked: rows.filter((r) => followUpsOf(r).some((o) => o.status)).length,
+    cvShared: rows.reduce((n, r) => n + cvSharedOf(r), 0),
   };
 }
 
