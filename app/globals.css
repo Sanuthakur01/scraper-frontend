@@ -1474,103 +1474,180 @@ button.kpi-action:not([aria-pressed='true']):hover .kpi-cta svg {
   box-shadow: 0 0 10px color-mix(in srgb, var(--course) var(--kpi-glow), transparent);
 }
 
-/* ---------- HR contacts: new jobs with and without HR details (HrDetails) ---------- */
+/* ---------- HR contact coverage (HrDetails): how many new openings have HR contact details ---------- */
 
-/* The two totals on the left, each course on the right (one column on narrow screens) */
+/* All courses on the left, each course in a table on the right (one column under 900px) */
 .hr-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(230px, 0.75fr) minmax(0, 2fr);
   gap: var(--space-6);
-  align-items: start;
+  align-items: stretch;
 }
 
-/* Stacked beside the courses; side by side when the card is one column (under 900px) */
-.hr-totals {
+.hr-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
-}
-
-/* A total that opens its jobs: like a tile, in the colour of what it counts */
-.hr-stat {
-  --tone: var(--accent);
-  display: grid;
-  gap: var(--space-1);
   align-content: start;
-  min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--border));
+  gap: var(--space-1);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--tone) 9%, var(--surface-2));
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  background: var(--surface-2);
 }
 
-.hr-stat.is-without {
-  --tone: var(--text-muted);
-}
-
-.hr-stat:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--tone) 16%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--tone) 55%, var(--border));
-}
-
-.hr-stat:disabled {
-  cursor: default;
-}
-
-.hr-stat-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--text-footnote);
+.hr-summary-label {
+  font-size: var(--text-caption);
   font-weight: 600;
-  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.hr-stat.is-with .hr-stat-label svg {
-  color: var(--accent-text);
-}
-
-.hr-stat-value {
+.hr-summary-value {
   font-size: var(--text-title1);
   font-weight: 750;
   letter-spacing: -0.025em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
 }
 
-.hr-stat-note {
+.hr-summary-note {
   font-size: var(--text-footnote);
+  color: var(--text-secondary);
+}
+
+/* The share as a bar: filled = with HR contact, the rest = not yet */
+.hr-meter {
+  display: block;
+  height: 8px;
+  margin: var(--space-3) 0 var(--space-2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+  overflow: hidden;
+}
+
+.hr-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.hr-legend {
+  display: grid;
+  gap: 2px;
+  margin: 0 calc(var(--space-2) * -1);
+}
+
+/* A count that opens its openings: label, the number on the right, an arrow */
+.hr-legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--text-footnote);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.hr-legend-row strong {
+  margin-left: auto;
+  font-size: var(--text-callout);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.hr-legend-row svg {
+  flex: none;
   color: var(--text-muted);
+}
+
+.hr-legend-row:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.hr-legend-row:disabled {
+  cursor: default;
+}
+
+.hr-legend-row:disabled svg {
+  visibility: hidden;
+}
+
+.hr-key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.hr-legend-row.is-without .hr-key {
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+/* Each course: its openings, how many have HR contact and how many don't (both open them), and the share */
+.hr-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.hr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-footnote);
+}
+
+.hr-table th,
+.hr-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.hr-table thead th {
+  padding-top: 0;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.hr-table tbody tr:last-child th,
+.hr-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.hr-table .num {
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-/* Each course: its name and share, a bar filled as far as it has HR details, and the two counts */
-.hr-courses {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-4);
+.hr-table td.num {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.hr-course {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px 12px;
+.hr-table th[scope='row'] {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .hr-course-name {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
-  font-weight: 600;
-  color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .hr-course-name .kpi-badge {
@@ -1579,73 +1656,103 @@ button.kpi-action:not([aria-pressed='true']):hover .kpi-cta svg {
   font-size: 10px;
 }
 
-.hr-course-share {
+.hr-num {
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font: inherit;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s;
 }
 
-.hr-course-track {
-  grid-column: 1 / -1;
-  height: 8px;
+.hr-num.is-with {
+  color: var(--accent-text);
+}
+
+.hr-num:hover:not(:disabled) {
+  background: var(--surface-hover);
+  text-decoration: underline;
+}
+
+.hr-num:disabled {
+  cursor: default;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.hr-table .hr-cov-col {
+  width: 34%;
+}
+
+.hr-cov {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hr-cov-track {
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--course) 16%, var(--surface-2));
   overflow: hidden;
 }
 
-.hr-course-track span {
+.hr-cov-track span {
   display: block;
   height: 100%;
   border-radius: 999px;
   background: var(--course);
 }
 
-.hr-course-counts {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-}
-
-.hr-course-counts button {
-  margin: -2px -6px;
-  padding: 2px 6px;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: none;
-  color: var(--text-secondary);
-  font-size: var(--text-footnote);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-
-.hr-course-counts strong {
-  color: var(--text-primary);
+.hr-cov-pct {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-
-.hr-course-counts button:hover:not(:disabled) {
-  background: var(--surface-hover);
   color: var(--text-primary);
-}
-
-.hr-course-counts button:disabled {
-  cursor: default;
 }
 
 @media (max-width: 900px) {
   .hr-body {
     grid-template-columns: minmax(0, 1fr);
   }
-  .hr-totals {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
-@media (max-width: 420px) {
-  .hr-totals {
-    grid-template-columns: minmax(0, 1fr);
+/* Phones: no Openings column and no small bars (the share stays) */
+@media (max-width: 560px) {
+  .hr-table .hide-xs,
+  .hr-cov-track,
+  .hr-course-name .kpi-badge {
+    display: none;
+  }
+  .hr-table th,
+  .hr-table td {
+    padding: 10px 4px;
+  }
+  .hr-table thead th {
+    white-space: normal;
+    vertical-align: bottom;
+  }
+  .hr-cov-pct {
+    min-width: 0;
+  }
+  .hr-table .hr-cov-col {
+    width: auto;
+    text-align: right;
+  }
+  .hr-cov {
+    justify-content: flex-end;
+  }
+  .hr-course-name {
+    white-space: normal;
   }
 }
 
