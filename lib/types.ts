@@ -170,7 +170,7 @@ export interface Job {
 }
 
 // extra-search: passes the keep rules, but it came from the extra searches (server config/courses.js).
-export type LeftOutReason = 'big-company' | 'experience' | 'no-experience' | 'extra-search';
+export type LeftOutReason = 'big-company' | 'experience' | 'senior' | 'no-experience' | 'extra-search';
 
 // GET /api/partners: employers with several openings in the last 90 days.
 export interface Partner {
@@ -427,6 +427,8 @@ export interface InterviewsResponse {
   from: string; // IST days, both included
   to: string;
   configured: boolean; // false: the sheet isn't connected on the server
+  missing?: string[]; // when not connected: the server's empty settings, by name ("GOOGLE_PRIVATE_KEY")
+  startedAt?: string; // when not connected: when the server last started (settings added later need a restart)
   items: Interview[]; // the latest day first, each day by time
   readAt: string | null; // when the sheet was last read
   error: string | null; // the latest reading failed (items are from the one before)

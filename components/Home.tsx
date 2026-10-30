@@ -9,6 +9,7 @@ import { countsOf } from '@/lib/performance';
 import { isCvShared } from '@/lib/review';
 import type { ApiState, InterviewsResponse, Meta, PerformanceResponse, ReviewResponse, Summary } from '@/lib/types';
 import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, MailIcon, PhoneIcon, SendIcon, UsersIcon } from './Icons';
+import { setupHint } from './Interviews';
 import { Freshness, PageError, PageHeader, PageSkeleton } from './PageParts';
 import { Delta } from './StatTiles';
 
@@ -215,6 +216,7 @@ export default function Home() {
         {iv && !iv.configured ? (
           <HomeTile tone="tone-interviews" icon={<CalendarIcon size={20} />} title="Interviews today">
             <span className="home-tile-note">The interview sheet isn&apos;t connected on the server yet.</span>
+            <span className="home-tile-note home-setup-hint">{setupHint(iv)}</span>
           </HomeTile>
         ) : (
           <HomeTile

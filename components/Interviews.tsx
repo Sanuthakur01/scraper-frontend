@@ -10,6 +10,13 @@ import { AlertIcon, BuildingIcon, CalendarIcon, CheckIcon, SearchIcon, UsersIcon
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 
+// Why the sheet isn't connected, for whoever sets up the server: the settings it's missing (names only) and when it
+// last started (settings added after that need a redeploy).
+export function setupHint(data: InterviewsResponse) {
+  const missing = data.missing?.length ? `Missing on the server: ${data.missing.join(', ')}.` : 'It needs GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY and INTERVIEWS_SHEET_ID.';
+  return `${missing}${data.startedAt ? ` The server last started ${formatUpdated(data.startedAt)}: settings added after that need a redeploy.` : ''}`;
+}
+
 // The Interviews page (/interviews, opened from its box on the Home page): the students' interviews the staff
 // list in their Google Sheet, in the period (today by default): the latest day first, each day by time, with
 // the student, course, company, round and room (how many were placed: a box at the top). Read-only: the staff keep editing the
@@ -69,8 +76,7 @@ export default function Interviews() {
         <SectionError what="the interviews" error={state.error} onRetry={state.reload} />
       ) : data && !data.configured ? (
         <p className="note-warning">
-          <strong>The interview sheet isn&apos;t connected on the server yet.</strong> It needs GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY and
-          INTERVIEWS_SHEET_ID.
+          <strong>The interview sheet isn&apos;t connected on the server yet.</strong> {setupHint(data)}
         </p>
       ) : (
         <>

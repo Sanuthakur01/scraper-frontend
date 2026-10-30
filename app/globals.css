@@ -9350,6 +9350,12 @@ a.home-tile:hover .kpi-go {
   color: var(--bad-text);
 }
 
+/* The Interviews box when the sheet isn't connected: what the server is missing */
+.home-setup-hint {
+  font-size: var(--text-footnote);
+  color: var(--text-muted);
+}
+
 /* The box's way in, at its foot */
 .home-tile-cta {
   display: flex;
