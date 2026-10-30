@@ -140,7 +140,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
       <PageHeader
         eyebrow={
           <Link className="back-link" href={`/dashboard?${query}`}>
-            <ChevronLeftIcon size={14} /> Dashboard
+            <ChevronLeftIcon size={14} /> Job market overview
           </Link>
         }
         title={course.name}

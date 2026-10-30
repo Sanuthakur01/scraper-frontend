@@ -8,9 +8,15 @@ import ThemeToggle from './ThemeToggle';
 
 // short: the tab's label (the five pages' full names don't fit the bar at any width; label is its title,
 // shown on hover). The tabs are words only: with icons too, a longer role badge pushed tabs out of the bar.
-// Home (/) has no tab: a sixth didn't fit on phones and tablets; the IJF logo opens it.
+// Dashboard opens Home (/, today's numbers; a sixth tab didn't fit on phones and tablets), and stays marked on the
+// pages its boxes open: the jobs dashboard (/dashboard), the course pages and Interviews.
 const PAGES: { href: string; label: string; short: string; matches: (path: string) => boolean }[] = [
-  { href: '/dashboard', label: 'Dashboard', short: 'Dashboard', matches: (path) => path.startsWith('/dashboard') || path.startsWith('/course') },
+  {
+    href: '/',
+    label: "Dashboard: today's numbers",
+    short: 'Dashboard',
+    matches: (path) => path === '/' || path.startsWith('/dashboard') || path.startsWith('/course') || path.startsWith('/interviews'),
+  },
   { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
   { href: '/partners', label: 'Hot Desk', short: 'Hot Desk', matches: (path) => path.startsWith('/partners') || path.startsWith('/servicenow') },
   { href: '/activity', label: 'Activity', short: 'Activity', matches: (path) => path.startsWith('/activity') },
@@ -26,7 +32,7 @@ export default function AppHeader() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link href="/" className="brand" aria-label="IJF HR Database: home" title="Home: today's numbers" aria-current={path === '/' ? 'page' : undefined}>
+        <Link href="/" className="brand" aria-label="IJF HR Database: home" title="Home: today's numbers">
           <span className="brand-mark" aria-hidden="true">
             IJF
           </span>
