@@ -79,6 +79,9 @@ export function statsOf(rows: ReviewRow[]): ReviewStats {
 
 // Added by the team in the period and not given to any student (now).
 export const isNotGiven = (row: ReviewRow) => Boolean(row.added) && !row.student && !row.withStudents;
+// A call whose feedback in the period is "CV shared" (the Review board's CV shared tile counts these): the Home
+// page's box and the CV shared page.
+export const isCvShared = (row: ReviewRow) => row.feedback?.status === 'cv-shared';
 // Given out or called: what the per-student, per-person and per-course tables count (a number only added
 // has no call to count; the "Not given out yet" tile has those).
 const handledOut = (row: ReviewRow) => Boolean(row.given || row.feedback);

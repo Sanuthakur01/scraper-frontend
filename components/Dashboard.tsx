@@ -105,7 +105,7 @@ export default function Dashboard() {
             period={period}
             first={meta.data.dataDays?.first}
             last={meta.data.dataDays?.last ?? anchor}
-            onChange={(query) => router.replace(`/?${query}`, { scroll: false })}
+            onChange={(query) => router.replace(`/dashboard?${query}`, { scroll: false })}
           />
         }
       >

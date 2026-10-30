@@ -407,6 +407,31 @@ export interface ReviewResponse {
   truncated: boolean;
 }
 
+// ---------- Interviews (GET /api/interviews, from the staff's interview sheet) ----------
+
+export interface Interview {
+  id: string; // the sheet's tab and row ("OCTOBER 2026!27")
+  date: string; // IST day
+  course: CourseId | null; // from the block's course row (PS, DA, DS, DE)
+  name: string; // the student, as written in the sheet
+  time: string; // as written ("4:00 PM", "ANYTIME")
+  minutes: number | null; // the time in minutes from midnight; null: no time
+  company: string;
+  round: string; // "R-01", "HR ROUND", "ASSESSMENT"…
+  room: string; // a room number ("106") or a city ("HYDERABAD"), as written
+  status: string; // written after the row ("PLACED"), else ''
+  placed: boolean;
+}
+export interface InterviewsResponse {
+  days: number;
+  from: string; // IST days, both included
+  to: string;
+  configured: boolean; // false: the sheet isn't connected on the server
+  items: Interview[]; // the latest day first, each day by time
+  readAt: string | null; // when the sheet was last read
+  error: string | null; // the latest reading failed (items are from the one before)
+}
+
 // ---------- IJF AI (/api/chat…) ----------
 
 export type ChatPeriod = { days?: number; from?: string; to?: string };

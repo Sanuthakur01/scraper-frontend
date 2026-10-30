@@ -139,7 +139,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
     <main className="page course-page" style={{ '--course': color } as CSSProperties}>
       <PageHeader
         eyebrow={
-          <Link className="back-link" href={`/?${query}`}>
+          <Link className="back-link" href={`/dashboard?${query}`}>
             <ChevronLeftIcon size={14} /> Dashboard
           </Link>
         }
