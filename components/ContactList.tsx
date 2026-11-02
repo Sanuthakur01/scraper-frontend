@@ -5,8 +5,8 @@ import { apiUrl } from '@/lib/api';
 import { COURSE_COLORS, formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
 import { contactsText, outcomeKey } from '@/lib/performance';
 import { signInHeader } from '@/lib/session';
-import type { Course, Job, JobsResponse, PerformanceRow } from '@/lib/types';
-import { CheckIcon, CloseIcon, CopyIcon, MailIcon, PhoneIcon } from './Icons';
+import type { Course, HotCompany, Job, JobsResponse, PerformanceRow } from '@/lib/types';
+import { CheckIcon, CloseIcon, CopyIcon, FlameIcon, MailIcon, PhoneIcon } from './Icons';
 import JobDetailsModal, { copyText, CopyButton } from './JobDetailsModal';
 
 // A job being opened from a row (id: the row's), or why it couldn't be.
@@ -58,6 +58,12 @@ export function useJobWindow(courses: Course[] | undefined, onSaved: () => void)
   return { opening, openJob, modal };
 }
 
+// "Called Aman Verma · today, 4:28 pm" / "3 calls to students · latest today, 4:28 pm"
+export const hotText = (company: HotCompany) =>
+  company.calls === 1
+    ? `Called ${company.students[0] || 'a student'} · ${formatUpdated(company.lastAt)}`
+    : `${formatNumber(company.calls)} calls to students · latest ${formatUpdated(company.lastAt)}`;
+
 // A tick box; mixed: some of what it stands for are ticked (the header's "all shown").
 function TickBox({ checked, mixed = false, label, onTick }: { checked: boolean; mixed?: boolean; label: string; onTick: (range: boolean) => void }) {
   const box = useRef<HTMLInputElement>(null);
@@ -81,7 +87,8 @@ function TickBox({ checked, mixed = false, label, onTick }: { checked: boolean; 
 // company and job (opens the job), who added it and when, and its follow-ups (students and remarks, in the last
 // two columns). Used by the Performance report's "All contacts" and the Assign numbers page. With `selected` and
 // `onSelect`, each row has a tick box (Shift-click ticks every row between it and the one clicked before) and
-// the header's ticks all the rows shown.
+// the header's ticks all the rows shown. hot: the company that called one of our students lately, for a row of
+// its numbers (marked with a flame and the call).
 export default function ContactList({
   rows,
   courses,
@@ -90,6 +97,7 @@ export default function ContactList({
   followUps,
   selected,
   onSelect,
+  hot,
 }: {
   rows: PerformanceRow[];
   courses: Course[];
@@ -98,6 +106,7 @@ export default function ContactList({
   followUps: (row: PerformanceRow) => ReactNode; // spans "Assigned to" and "Remark"
   selected?: Set<string>; // outcomeKey of the rows ticked
   onSelect?: (keys: string[], on: boolean) => void;
+  hot?: (row: PerformanceRow) => HotCompany | undefined;
 }) {
   const lastClicked = useRef<number | null>(null);
   const selectable = Boolean(selected && onSelect);
@@ -132,8 +141,9 @@ export default function ContactList({
         const key = keys[i];
         const course = courses.find((c) => c.id === row.job.course);
         const on = Boolean(selected?.has(key));
+        const heat = hot?.(row);
         return (
-          <li key={key} className={`contact-item ${on ? 'is-selected' : ''}`}>
+          <li key={key} className={`contact-item ${on ? 'is-selected' : ''} ${heat ? 'is-hot' : ''}`}>
             <span className="ci-contact">
               {selectable && <TickBox checked={on} label={`Select ${row.value}`} onTick={(range) => tick(i, !on, range)} />}
               <span className={`perf-kind ${row.field}`}>
@@ -157,6 +167,12 @@ export default function ContactList({
                 )}
                 {row.job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
               </span>
+              {heat && (
+                <span className="hot-badge">
+                  <FlameIcon size={15} className="hot-flame" />
+                  {hotText(heat)}
+                </span>
+              )}
               {opening?.id === key && opening.problem && (
                 <span className="field-error" role="status">
                   {opening.problem}

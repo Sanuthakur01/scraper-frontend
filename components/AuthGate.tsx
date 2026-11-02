@@ -16,6 +16,7 @@ const TEST_SIGN_IN = process.env.NODE_ENV === 'development' && process.env.NEXT_
 export interface Access {
   role: Role;
   label: string; // "Research team"
+  email: string; // the signed-in person's ('' if their account has none)
   can: (permission: Permission) => boolean;
 }
 
@@ -186,7 +187,8 @@ function NoAccess({ email, found, onRecheck }: { email: string; found: string; o
 function Gate({ children }: { children: ReactNode }) {
   const { isSignedIn, user } = useUser();
   const role = isSignedIn && user ? roleFrom(user.publicMetadata) : null;
-  const access = useMemo<Access | null>(() => (role ? { role, label: ROLE_LABELS[role], can: (p) => can(role, p) } : null), [role]);
+  const email = user?.primaryEmailAddress?.emailAddress ?? '';
+  const access = useMemo<Access | null>(() => (role ? { role, label: ROLE_LABELS[role], email, can: (p) => can(role, p) } : null), [role, email]);
 
   if (!isSignedIn || !user) return <SignInScreen />;
   if (!access || !access.can('view')) {
@@ -211,7 +213,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   if (TEST_SIGN_IN) {
     const role = roleFrom({ role: process.env.NEXT_PUBLIC_TEST_ROLE || 'ADMIN' }) ?? 'ADMIN';
     return (
-      <AccessContext.Provider value={{ role, label: ROLE_LABELS[role], can: (p) => can(role, p) }}>
+      <AccessContext.Provider value={{ role, label: ROLE_LABELS[role], email: 'tester@example.com', can: (p) => can(role, p) }}>
         <p className="test-sign-in-note">Test sign-in (development only): tester@example.com · {ROLE_LABELS[role]}</p>
         {children}
       </AccessContext.Provider>

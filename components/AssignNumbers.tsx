@@ -6,12 +6,13 @@ import { useId, useMemo, useState } from 'react';
 import { useApi } from '@/lib/api';
 import { formatDate, formatNumber, istDayOf, periodFrom, periodParams, periodQuery, type Period } from '@/lib/format';
 import { ACTIVITY_PERIODS, hasStudent, outcomeKey } from '@/lib/performance';
-import type { Meta, PerformanceResponse, PerformanceRow } from '@/lib/types';
+import type { HotCompaniesResponse, HotCompany, Meta, PerformanceResponse, PerformanceRow } from '@/lib/types';
 import { useFollowUps } from '@/lib/useFollowUps';
 import { useAccess } from './AuthGate';
 import ContactList, { SelectionBar, useJobWindow } from './ContactList';
 import { FollowUps } from './FollowUpControls';
-import { CheckIcon, ChevronLeftIcon, PhoneIcon, SearchIcon } from './Icons';
+import { CheckIcon, ChevronLeftIcon, FlameIcon, PhoneIcon, PhoneIncomingIcon, SearchIcon } from './Icons';
+import IncomingCallForm from './IncomingCallForm';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 import RetryCalls from './RetryCalls';
@@ -30,7 +31,9 @@ const plural = (n: number, one: string, many = `${one}s`) => `${formatNumber(n)}
 // view, with its students, until a filter or the period changes: another student can be added or a name put
 // right. Above the list: yesterday's unanswered calls (DNP, Busy, Switched off), to try again today. Numbers can be
 // ticked (one by one, a Shift range, all shown, or all in the list) and copied together: the
-// numbers and emails alone, separated by commas.
+// numbers and emails alone, separated by commas. At the top, "Log an incoming call" (an HR called one of our
+// students): the numbers of the companies in our HR database that called in the last 7 days come first, marked with
+// a flame, also those added before the period (up to 30 days back), so other students can call them too.
 export default function AssignNumbers() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,10 +41,18 @@ export default function AssignNumbers() {
   const meta = useApi<Meta>('meta');
   const [reload, setReload] = useState(0); // bumped after a save in a job's window: its numbers may change
   const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), r: reload || undefined }, { auth: true });
+  const hot = useApi<HotCompaniesResponse>('incoming-calls/hot', { r: reload || undefined }, { auth: true });
   const mayRecord = useAccess()?.can('record-outcomes') ?? false;
   const studentsId = useId();
+  const [logging, setLogging] = useState(false); // the "Log an incoming call" window is open
   const data = perf.data;
-  const { rows, students, saves, save } = useFollowUps(data);
+  const hotData = hot.data;
+  // The period's numbers, with the calling companies' numbers added before it (up to 30 days back) in front.
+  const merged = useMemo(
+    () => (data && hotData?.rows.length ? { ...data, rows: [...hotData.rows, ...data.rows] } : data),
+    [data, hotData],
+  );
+  const { rows, students, saves, save } = useFollowUps(merged);
   const jobWindow = useJobWindow(meta.data?.courses, () => setReload((n) => n + 1));
   const [course, setCourse] = useState(''); // '' = all courses
   const [kind, setKind] = useState<Kind>('all');
@@ -49,12 +60,19 @@ export default function AssignNumbers() {
   const [limit, setLimit] = useState(PAGE);
   const [picked, setPicked] = useState<Set<string>>(new Set()); // ticked numbers (outcomeKey), within the list
 
-  // Every number and email once (the newest time it was added), and the ones no student has yet.
+  // The companies in our HR database that called one of our students lately, by key.
+  const hotCompanies = useMemo(() => new Map((hotData?.companies ?? []).map((c) => [c.key, c])), [hotData]);
+  const hotOf = (row: PerformanceRow): HotCompany | undefined => (row.companyKey ? hotCompanies.get(row.companyKey) : undefined);
+  // Every number and email once (the newest time it was added), the calling companies' first, and the ones no
+  // student has yet.
   const contacts = useMemo(() => {
     const seen = new Map<string, PerformanceRow>();
     for (const row of rows) if (!seen.has(outcomeKey(row))) seen.set(outcomeKey(row), row);
-    return [...seen.values()];
-  }, [rows]);
+    const all = [...seen.values()];
+    const calling = (row: PerformanceRow) => Boolean(row.companyKey && hotCompanies.has(row.companyKey));
+    return [...all.filter(calling), ...all.filter((row) => !calling(row))];
+  }, [rows, hotCompanies]);
+  const inPeriod = useMemo(() => new Set((data?.rows ?? []).map(outcomeKey)), [data]);
   const waiting = contacts.filter((row) => !hasStudent(row));
 
   // Which numbers the list shows is worked out when a filter or the data changes, not when one is given out.
@@ -66,9 +84,9 @@ export default function AssignNumbers() {
   const filters = JSON.stringify([course, kind, words]);
   const [shown, setShown] = useState<{ filters: string; data: PerformanceResponse | null; keys: Set<string> } | null>(null);
   let keys = shown?.keys ?? new Set<string>();
-  if (!shown || shown.filters !== filters || shown.data !== data) {
+  if (!shown || shown.filters !== filters || shown.data !== merged) {
     keys = new Set(waiting.filter(fits).map(outcomeKey));
-    setShown({ filters, data, keys });
+    setShown({ filters, data: merged, keys });
     setLimit(PAGE);
     if (picked.size) setPicked(new Set()); // a new list: nothing ticked
   }
@@ -82,6 +100,9 @@ export default function AssignNumbers() {
   const when = periodWords(period);
   const listed = contacts.filter((row) => keys.has(outcomeKey(row)));
   const givenHere = listed.filter(hasStudent).length; // given out since the list was made
+  const addedInPeriod = contacts.filter((row) => inPeriod.has(outcomeKey(row))).length;
+  const addedBefore = contacts.length - addedInPeriod; // the calling companies' numbers added before the period
+  const calling = [...hotCompanies.values()];
   // The counts beside the filters: numbers not given out yet (phones and emails within the chosen course).
   const inCourse = (row: PerformanceRow) => !course || row.job.course === course;
   const countOf = (k: Kind) => waiting.filter((row) => inCourse(row) && (k === 'all' || row.field === k)).length;
@@ -128,6 +149,38 @@ export default function AssignNumbers() {
         {since && <span className="status-pill">Counted since {formatDate(since)}, when the activity record began</span>}
       </PageHeader>
 
+      <section className="call-banner" aria-label="Incoming calls">
+        <span className="call-banner-icon" aria-hidden="true">
+          <PhoneIncomingIcon size={22} />
+        </span>
+        <div className="call-banner-text">
+          <strong>Did an HR call one of our students?</strong>
+          <span>
+            Log the call. If the company is in our HR database, its numbers come first below, marked with a flame, so other students can call
+            them too.
+          </span>
+          {calling.length > 0 && (
+            <span className="call-banner-hot">
+              <FlameIcon size={15} className="hot-flame" />
+              <span>
+                Called in the last {hotData?.days ?? 7} days: {calling.slice(0, 4).map((c) => c.name).join(', ')}
+                {calling.length > 4 ? ` and ${formatNumber(calling.length - 4)} more` : ''}
+              </span>
+            </span>
+          )}
+        </div>
+        <div className="call-banner-actions">
+          {mayRecord && (
+            <button type="button" className="btn btn-hot" onClick={() => setLogging(true)}>
+              <PhoneIncomingIcon size={16} /> Log an incoming call
+            </button>
+          )}
+          <Link className="btn-link" href="/incoming-calls?days=1">
+            See today&apos;s calls
+          </Link>
+        </div>
+      </section>
+
       <RetryCalls courses={courses} opening={jobWindow.opening} onOpenJob={jobWindow.openJob} />
 
       <section className="card card-flush perf-card assign-card">
@@ -140,7 +193,9 @@ export default function AssignNumbers() {
           }
           description={
             data
-              ? `Of the ${plural(contacts.length, 'number and email', 'numbers and emails')} added ${when}, the newest first`
+              ? `Of the ${plural(addedInPeriod, 'number and email', 'numbers and emails')} added ${when}${
+                  addedBefore ? `, and ${plural(addedBefore, 'earlier one', 'earlier ones')} of companies that called` : ''
+                }: ${calling.length ? 'the companies that called our students first, then the newest' : 'the newest first'}`
               : `The numbers and emails added ${when}`
           }
         />
@@ -223,6 +278,7 @@ export default function AssignNumbers() {
                   followUps={followUps}
                   selected={picked}
                   onSelect={select}
+                  hot={hotOf}
                 />
                 {listed.length > PAGE && (
                   <div className="list-foot">
@@ -268,6 +324,9 @@ export default function AssignNumbers() {
         onClear={() => setPicked(new Set())}
       />
       {jobWindow.modal}
+      {logging && (
+        <IncomingCallForm courses={courses} students={students} onClose={() => setLogging(false)} onSaved={() => setReload((n) => n + 1)} />
+      )}
     </main>
   );
 }

@@ -7,8 +7,8 @@ import { useApi } from '@/lib/api';
 import { COURSE_COLORS, courseInitials, formatDay, formatNumber, formatTime, istDayOf, sumCounts } from '@/lib/format';
 import { countsOf } from '@/lib/performance';
 import { isCvShared } from '@/lib/review';
-import type { ApiState, InterviewsResponse, Meta, PerformanceResponse, ReviewResponse, Summary } from '@/lib/types';
-import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, MailIcon, PhoneIcon, SendIcon, UsersIcon } from './Icons';
+import type { ApiState, IncomingCallsResponse, InterviewsResponse, Meta, PerformanceResponse, ReviewResponse, Summary } from '@/lib/types';
+import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, MailIcon, PhoneIcon, PhoneIncomingIcon, SendIcon, UsersIcon } from './Icons';
 import { setupHint } from './Interviews';
 import { Freshness, PageError, PageHeader, PageSkeleton } from './PageParts';
 import { Delta } from './StatTiles';
@@ -66,9 +66,9 @@ function TileValue({ state, value }: { state: ApiState<unknown>; value: number |
 }
 
 // The first page: today at a glance, five boxes. Job postings added today (opens the dashboard), HR contacts
-// found today (the Performance report), CVs shared today (the CV shared page), and two still to come: incoming
-// calls and interviews. Each box counts from the same data as the page it opens, so the two always agree. An old
-// dashboard link (/?days=7) goes on to /dashboard.
+// found today (the Performance report), CVs shared today (the CV shared page), incoming calls logged today (the
+// Incoming calls page) and today's interviews (the Interviews page). Each box counts from the same data as the page
+// it opens, so the two always agree. An old dashboard link (/?days=7) goes on to /dashboard.
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,6 +83,7 @@ export default function Home() {
   const performance = useApi<PerformanceResponse>('performance', { days: 1 }, { auth: true, skip: oldLink });
   const review = useApi<ReviewResponse>('review', { days: 1 }, { auth: true, skip: oldLink });
   const interviews = useApi<InterviewsResponse>('interviews', { days: 1 }, { auth: true, skip: oldLink });
+  const calls = useApi<IncomingCallsResponse>('incoming-calls', { days: 1 }, { auth: true, skip: oldLink });
 
   const contacts = useMemo(() => (performance.data ? countsOf(performance.data.rows) : null), [performance.data]);
   const finders = useMemo(() => new Set(performance.data?.rows.map((row) => row.actor.email)).size, [performance.data]);
@@ -106,12 +107,20 @@ export default function Home() {
   // Today's interviews (from the staff's sheet, by time, "Anytime" last): the next few still to come; when none
   // is left, the day's last few.
   const iv = interviews.data;
-  const ivItems = iv?.items ?? [];
+  // A rescheduled interview isn't counted or listed (the Interviews page lists it, marked).
+  const ivItems = (iv?.items ?? []).filter((i) => !i.rescheduled);
+  const ivRescheduled = (iv?.items ?? []).length - ivItems.length;
   const minutesNow = hour * 60 + new Date(now.getTime() + 330 * 60_000).getUTCMinutes();
   const comingUp = ivItems.filter((i) => i.minutes == null || i.minutes >= minutesNow);
   const ivListed = comingUp.length ? comingUp.slice(0, RECENT) : ivItems.slice(-RECENT);
   const ivCompanies = new Set(ivItems.map((i) => i.company.toLowerCase()).filter(Boolean)).size;
   const placed = ivItems.filter((i) => i.placed).length;
+  // Today's incoming calls (the latest first), and how many companies are in our HR database or not.
+  const callItems = calls.data?.items ?? null;
+  const callCompanies = {
+    in: new Set((callItems ?? []).filter((c) => c.inPortal).map((c) => c.companyKey)).size,
+    out: new Set((callItems ?? []).filter((c) => !c.inPortal).map((c) => c.companyKey)).size,
+  };
 
   return (
     <main className="page home-page">
@@ -209,8 +218,38 @@ export default function Home() {
           )}
         </HomeTile>
 
-        <HomeTile tone="tone-calls" icon={<PhoneIcon size={20} />} title="Incoming calls today">
-          <span className="home-tile-note">Calls from HR to students today, with who picked up.</span>
+        <HomeTile
+          tone="tone-calls"
+          icon={<PhoneIncomingIcon size={20} />}
+          title="Incoming calls today"
+          href="/incoming-calls?days=1"
+          cta="See today's calls"
+          label={`Incoming calls today: ${callItems ? formatNumber(callItems.length) : 'loading'}. See them, with each company and student`}
+        >
+          <TileValue state={calls} value={callItems ? callItems.length : null} />
+          {callItems && (
+            <>
+              <span className="home-tile-note">
+                {callItems.length
+                  ? `${plural(callCompanies.in, 'company', 'companies')} in our HR database · ${formatNumber(callCompanies.out)} not`
+                  : 'No incoming calls logged yet today'}
+              </span>
+              {callItems.length ? (
+                <>
+                  <span className="home-recent-label">Latest</span>
+                  <ul className="home-recent" aria-label="Latest calls">
+                    {callItems.slice(0, RECENT).map((call) => (
+                      <li key={call.id}>
+                        <strong>{call.company}</strong>
+                        <span>{call.student ? `called ${call.student}` : (courses.find((c) => c.id === call.course)?.name ?? '')}</span>
+                        <span className="home-recent-time">{formatTime(call.at)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </>
+          )}
         </HomeTile>
 
         {iv && !iv.configured ? (
@@ -232,8 +271,10 @@ export default function Home() {
               <>
                 <span className="home-tile-note">
                   {ivItems.length
-                    ? `${plural(ivCompanies, 'company', 'companies')}${placed ? ` · ${formatNumber(placed)} placed` : ''}`
-                    : 'No interviews in the sheet for today'}
+                    ? `${plural(ivCompanies, 'company', 'companies')}${placed ? ` · ${formatNumber(placed)} placed` : ''}${ivRescheduled ? ` · ${formatNumber(ivRescheduled)} rescheduled` : ''}`
+                    : ivRescheduled
+                      ? `No interviews today · ${formatNumber(ivRescheduled)} rescheduled`
+                      : 'No interviews in the sheet for today'}
                   {iv.error && ' · showing the last reading of the sheet'}
                 </span>
                 {ivItems.length ? (
@@ -257,7 +298,7 @@ export default function Home() {
       </section>
 
       <p className="page-footnote">
-        Contacts and CVs count today&apos;s work (IST). Job postings count the latest collection. Interviews come from the staff&apos;s interview sheet.
+        Contacts, CVs and incoming calls count today&apos;s work (IST). Job postings count the latest collection. Interviews come from the staff&apos;s interview sheet.
       </p>
     </main>
   );

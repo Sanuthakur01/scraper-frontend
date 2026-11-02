@@ -241,6 +241,7 @@ export interface SearchContact {
   job: Job;
   set: 'filtered' | 'nonfiltered';
   matches: { field: SearchField; value: string }[];
+  companyKey?: string; // the job's company's key (GET /companies/jobs?key=)
 }
 
 export interface SearchResponse {
@@ -344,6 +345,7 @@ export interface PerformanceRow {
   field: 'phone' | 'email';
   value: string;
   key: string; // what the number/email is matched by (bare digits / lower case): rows of the same one share it
+  companyKey?: string; // the job's company's key: the same company however it is spelled (Assign numbers' calling companies)
   outcomes: ContactOutcome[]; // its follow-ups: one per student it was given to, the first given first
   foundBy?: string; // where it was found ("Apollo": the job's Found by when it was added); '' = not recorded
 }
@@ -418,9 +420,11 @@ export interface Interview {
   minutes: number | null; // the time in minutes from midnight; null: no time
   company: string;
   round: string; // "R-01", "HR ROUND", "ASSESSMENT"…
+  roundGroup: string; // the round for the filter: "Round 1" (R-01), "Assessment" (any spelling), "HR"…; '' when blank
   room: string; // a room number ("106") or a city ("HYDERABAD"), as written
-  status: string; // written after the row ("PLACED"), else ''
+  status: string; // written after the row ("PLACED", "RESCHEDULED FOR TOMORROW"), else ''
   placed: boolean;
+  rescheduled: boolean; // moved to another time: listed, but not counted as an interview that day
 }
 export interface InterviewsResponse {
   days: number;
@@ -432,6 +436,76 @@ export interface InterviewsResponse {
   items: Interview[]; // the latest day first, each day by time
   readAt: string | null; // when the sheet was last read
   error: string | null; // the latest reading failed (items are from the one before)
+}
+
+// ---------- Incoming calls (GET/POST /api/incoming-calls): HR calls to our students, logged by the team ----------
+
+export type CallSource = 'naukri' | 'linkedin' | 'indeed' | 'glassdoor' | 'referral' | 'other';
+export type CallOutcome = 'interview' | 'cv-shared' | 'call-back' | 'not-interested' | 'not-eligible' | 'other';
+// A job a call is linked to (the opening it was about, or the one that has its number).
+export interface CallJobRef {
+  id: string;
+  set: 'filtered' | 'nonfiltered';
+  title: string;
+}
+export interface IncomingCall {
+  id: string;
+  at: string; // when the call came
+  phone: string; // the HR's number, as written
+  hrName: string;
+  email: string;
+  company: string;
+  companyKey: string;
+  inPortal: boolean; // the company is in our HR database (has stored jobs)
+  job: (CallJobRef & { course: CourseId | '' }) | null; // the opening it was about
+  course: CourseId;
+  student: string; // who got the call ('' = not said)
+  source: CallSource | '';
+  outcome: CallOutcome | '';
+  note: string;
+  // The HR number in our HR database: added to the opening by this call, or already on a job; problem: why it
+  // couldn't be added. null: not in it (no opening chosen, a new number).
+  number: { added: boolean; job?: CallJobRef & { company: string }; problem?: string } | null;
+  createdAt: string;
+  createdBy: { email: string; name?: string } | null;
+}
+export interface IncomingCallsResponse {
+  days: number;
+  from: string;
+  to: string;
+  since: string | null; // when the first call was logged
+  items: IncomingCall[]; // newest first
+  truncated: boolean;
+  students: string[]; // every student name used so far, to suggest
+}
+// What POST /api/incoming-calls takes.
+export interface IncomingCallInput {
+  at?: string;
+  phone: string;
+  hrName: string;
+  email: string;
+  company: string;
+  jobId: string; // '' = none chosen
+  course: CourseId | '';
+  student: string;
+  source: CallSource;
+  outcome: CallOutcome | '';
+  note: string;
+  addToJob: boolean;
+}
+// GET /api/incoming-calls/hot: the companies in our HR database that called a student lately, and their numbers
+// and emails added in the last 30 days (rows as in the Performance report).
+export interface HotCompany {
+  key: string;
+  name: string;
+  calls: number;
+  lastAt: string;
+  students: string[];
+}
+export interface HotCompaniesResponse {
+  days: number;
+  companies: HotCompany[];
+  rows: PerformanceRow[];
 }
 
 // ---------- IJF AI (/api/chat…) ----------

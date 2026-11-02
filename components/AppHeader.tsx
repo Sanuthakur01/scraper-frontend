@@ -20,7 +20,12 @@ const PAGES: { href: string; label: string; short: string; matches: (path: strin
   { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
   { href: '/partners', label: 'Hot Desk', short: 'Hot Desk', matches: (path) => path.startsWith('/partners') || path.startsWith('/servicenow') },
   { href: '/activity', label: 'Activity', short: 'Activity', matches: (path) => path.startsWith('/activity') },
-  { href: '/review', label: 'Review board', short: 'Review', matches: (path) => path.startsWith('/review') || path.startsWith('/assign') || path.startsWith('/cv-shared') },
+  {
+    href: '/review',
+    label: 'Review board',
+    short: 'Review',
+    matches: (path) => ['/review', '/assign', '/cv-shared', '/incoming-calls'].some((page) => path.startsWith(page)),
+  },
 ];
 
 // The bar across the top of every page: the product name (opens Home), the five main pages, light/dark, the

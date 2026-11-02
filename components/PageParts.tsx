@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { formatDateTime, formatUpdated } from '@/lib/format';
+import type { CSSProperties, ReactNode } from 'react';
+import { formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
 import type { LastRun } from '@/lib/types';
-import { AlertIcon } from './Icons';
+import { AlertIcon, ArrowDownIcon, CheckIcon } from './Icons';
 
 // The top of a page: a small line above, a large title (no icon beside it, as on Apple's platforms),
 // one line of explanation, a row of small facts (freshness), and the page's controls on the right.
@@ -203,5 +203,41 @@ export function PageError({ title, error }: { title: string; error?: Error | nul
         </button>
       </div>
     </main>
+  );
+}
+
+// A headline box that filters the list below it: pressed while its filter is on; a box with nothing to show
+// can't be pressed. color: its badge's and pressed tint's colour (a course's), else the page's.
+export function FilterKpi(props: { name: string; value: number | null; note: string; icon: ReactNode; color?: string; active: boolean; onClick: () => void }) {
+  const { name, value, note, icon, color, active, onClick } = props;
+  return (
+    <button
+      type="button"
+      className="kpi kpi-action"
+      aria-pressed={active}
+      disabled={!value && !active}
+      onClick={onClick}
+      style={color ? ({ '--course': color } as CSSProperties) : undefined}
+    >
+      <span className="kpi-top">
+        <span className="kpi-badge" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="kpi-name">{name}</span>
+      </span>
+      <span className="kpi-value">{value == null ? '—' : formatNumber(value)}</span>
+      <span className="kpi-period">{note}</span>
+      <span className="kpi-cta">
+        {active ? (
+          <>
+            <CheckIcon size={14} /> Showing below
+          </>
+        ) : (
+          <>
+            Show in the table <ArrowDownIcon size={14} />
+          </>
+        )}
+      </span>
+    </button>
   );
 }

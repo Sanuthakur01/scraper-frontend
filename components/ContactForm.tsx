@@ -22,6 +22,7 @@ export const FOUND_BY: { id: string; label: string }[] = [
   { id: 'linkedin', label: 'LinkedIn' },
   { id: 'naukri', label: 'Naukri' },
   { id: 'indeed', label: 'Indeed' },
+  { id: 'incoming-call', label: 'Incoming call' }, // the HR called a student (logged on the Incoming calls form)
 ];
 export const foundByLabel = (id?: string) => FOUND_BY.find((o) => o.id === id)?.label ?? '';
 // What can have a problem: each field, and Found by; in the form's order (the first one gets the cursor).

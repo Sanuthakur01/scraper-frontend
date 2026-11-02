@@ -383,3 +383,19 @@ export const CrownIcon = (p: P) => (
     <path d="M5 21h14" />
   </Icon>
 );
+
+export const PhoneIncomingIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M16 2v6h6" />
+    <path d="m22 2-6 6" />
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+  </Icon>
+);
+
+// A flame, filled: an outer flame and a brighter core (coloured and animated by CSS: .hot-flame).
+export const FlameIcon = ({ size = 16, ...p }: P) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...p}>
+    <path className="flame-outer" d="M12 1.5c.9 3.1 3.6 5 5.4 7.6 1.4 2 2.1 3.9 2.1 5.9a7.5 7.5 0 0 1-15 0c0-2.4 1.1-4.4 2.7-5.9.2 1.6 1 2.8 2.3 3.4-.5-4 .6-7.6 2.5-11z" />
+    <path className="flame-core" d="M12.2 10.5c.5 1.6 1.9 2.6 2.7 3.9.6 1 .9 1.9.9 2.8a3.8 3.8 0 0 1-7.6 0c0-1.4.7-2.6 1.7-3.4.1.9.6 1.6 1.3 1.9-.2-2 .3-3.7 1-5.2z" />
+  </svg>
+);
