@@ -50,8 +50,8 @@ type Field = 'phone' | 'email' | 'company' | 'course' | 'at';
 const FIELD_ORDER: Field[] = ['phone', 'at', 'email', 'company', 'course'];
 
 // Waits until the text stops changing for a moment, then searches our HR database (search?q=): companies by
-// name, or jobs that already have a phone number.
-function useSearch(text: string, ready: boolean) {
+// name, or jobs that already have a phone number. (The Add a job form uses it too.)
+export function useSearch(text: string, ready: boolean) {
   const [result, setResult] = useState<SearchResponse | null>(null);
   useEffect(() => {
     if (!ready) return;
@@ -74,7 +74,7 @@ function useSearch(text: string, ready: boolean) {
 }
 
 // What we know of a company chosen from our HR database: its openings (kept and left out), newest first.
-function useCompanyJobs(key: string | null) {
+export function useCompanyJobs(key: string | null) {
   const [state, setState] = useState<{ key: string; data: CompanyJobsResponse | null; failed: boolean } | null>(null);
   useEffect(() => {
     if (!key) return;
@@ -96,7 +96,7 @@ function useCompanyJobs(key: string | null) {
 }
 
 // The company's profile once chosen: openings by course, where, when it last posted, HR contacts we hold.
-function CompanyProfile({ jobs, courses }: { jobs: CompanyJobsResponse; courses: Course[] }) {
+export function CompanyProfile({ jobs, courses }: { jobs: CompanyJobsResponse; courses: Course[] }) {
   const byCourse = courses.map((c) => ({ c, n: jobs.items.filter((j) => j.course === c.id).length })).filter((x) => x.n > 0);
   const cities = [...new Set(jobs.items.flatMap((j) => shownCities(j.cities)))].slice(0, 3);
   const withHr = jobs.items.filter((j) => j.contact.phone || j.contact.email).length;

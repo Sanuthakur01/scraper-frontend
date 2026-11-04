@@ -9,13 +9,13 @@ import ThemeToggle from './ThemeToggle';
 // short: the tab's label (the five pages' full names don't fit the bar at any width; label is its title,
 // shown on hover). The tabs are words only: with icons too, a longer role badge pushed tabs out of the bar.
 // Dashboard opens Home (/, today's numbers; a sixth tab didn't fit on phones and tablets), and stays marked on the
-// pages its boxes open: the jobs dashboard (/dashboard), the course pages and Interviews.
+// pages its boxes open: the jobs dashboard (/dashboard), the course pages, Interviews and the jobs added by the team.
 const PAGES: { href: string; label: string; short: string; matches: (path: string) => boolean }[] = [
   {
     href: '/',
     label: "Dashboard: today's numbers",
     short: 'Dashboard',
-    matches: (path) => path === '/' || path.startsWith('/dashboard') || path.startsWith('/course') || path.startsWith('/interviews'),
+    matches: (path) => path === '/' || ['/dashboard', '/course', '/interviews', '/added-jobs'].some((page) => path.startsWith(page)),
   },
   { href: '/performance', label: 'Performance report', short: 'Performance', matches: (path) => path.startsWith('/performance') },
   { href: '/partners', label: 'Hot Desk', short: 'Hot Desk', matches: (path) => path.startsWith('/partners') || path.startsWith('/servicenow') },

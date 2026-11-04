@@ -206,6 +206,22 @@ export function PageError({ title, error }: { title: string; error?: Error | nul
   );
 }
 
+// A headline box that only counts (null: not loaded yet).
+export function Kpi({ icon, name, value, note }: { icon: ReactNode; name: string; value: number | null; note: string }) {
+  return (
+    <div className="kpi">
+      <div className="kpi-top">
+        <span className="kpi-badge" aria-hidden="true">
+          {icon}
+        </span>
+        <span className="kpi-name">{name}</span>
+      </div>
+      <p className="kpi-value">{value == null ? '—' : formatNumber(value)}</p>
+      <p className="kpi-period">{note}</p>
+    </div>
+  );
+}
+
 // A headline box that filters the list below it: pressed while its filter is on; a box with nothing to show
 // can't be pressed. color: its badge's and pressed tint's colour (a course's), else the page's.
 export function FilterKpi(props: { name: string; value: number | null; note: string; icon: ReactNode; color?: string; active: boolean; onClick: () => void }) {

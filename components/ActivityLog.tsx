@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { apiUrl, useApi } from '@/lib/api';
+import { apiUrl, fetchJob, JOB_NOT_STORED, OFFLINE, useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, dayHeading, formatDateTime, formatNumber, formatTime, istDayOf } from '@/lib/format';
 import { signInHeader } from '@/lib/session';
-import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, JobsResponse, Meta } from '@/lib/types';
+import type { ActivityAction, ActivityChange, ActivityEntry, ActivityResponse, Course, Job, Meta } from '@/lib/types';
 import Avatar from './Avatar';
-import { HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
+import { ExternalIcon, HistoryIcon, LinkIcon, MailIcon, MessageIcon, NoteIcon, PhoneIcon, SearchIcon, SparklesIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 
@@ -25,6 +25,8 @@ const FIELDS: Record<ActivityChange['field'], { label: string; icon: ReactNode }
   contactStudent: { label: 'Student', icon: <UserIcon size={13} /> },
   contactRemark: { label: 'Remark', icon: <MessageIcon size={13} /> },
 };
+// A field this page doesn't know yet (recorded by a newer server): its name as recorded, never a broken page.
+const fieldOf = (field: string) => FIELDS[field as ActivityChange['field']] ?? { label: field, icon: null };
 
 const ACTION_LABELS: Record<ActivityAction, string> = { added: 'Added', edited: 'Edited', removed: 'Removed' };
 
@@ -81,6 +83,8 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
   const { actor, job } = entry;
   const role = roleFrom({ role: actor.role ?? '' });
   const course = courses.find((c) => c.id === job.course);
+  // A job added by hand, or one removed (gone: its title can't be opened), and the link it was added with.
+  const handJob = entry.newJob ?? entry.removedJob;
   return (
     <li className="activity-item">
       <Avatar name={actor.name ?? ''} email={actor.email} className="activity-avatar" />
@@ -91,11 +95,15 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
           {role && <span className="activity-role">{ROLE_LABELS[role]}</span>}
         </p>
         <p className="activity-what">
-          <span className={`action-pill ${entry.action}`}>{ACTION_LABELS[entry.action]}</span>
-          <span>{entry.changes.some((c) => c.contact) ? 'follow-up on' : 'HR details on'}</span>
-          <button type="button" className="activity-job" onClick={() => onOpenJob(entry)} aria-haspopup="dialog" title="Open this job">
-            {job.title || 'a job'}
-          </button>
+          <span className={`action-pill ${entry.action}`}>{ACTION_LABELS[entry.action] ?? entry.action}</span>
+          <span>{handJob ? 'the job' : entry.changes.some((c) => c.contact) ? 'follow-up on' : 'HR details on'}</span>
+          {entry.removedJob ? (
+            <strong className="activity-job-gone">{job.title || 'a job'}</strong>
+          ) : (
+            <button type="button" className="activity-job" onClick={() => onOpenJob(entry)} aria-haspopup="dialog" title="Open this job">
+              {job.title || 'a job'}
+            </button>
+          )}
           {job.company && <span className="muted">at {job.company}</span>}
           {course && (
             <span className="job-course">
@@ -103,7 +111,19 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
               {course.name}
             </span>
           )}
+          {entry.removedJob && <span className="muted">(added by hand)</span>}
           {job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
+          {entry.newJob && <span className="new-badge">New job</span>}
+          {entry.newJob?.newCompany && (
+            <span className="new-badge is-company" title="The first job of this company in our HR database">
+              New company
+            </span>
+          )}
+          {handJob?.url && (
+            <a className="activity-link" href={handJob.url} target="_blank" rel="noopener noreferrer" title="Open the job opening" aria-label={`Open the job opening of ${job.title || 'this job'}`}>
+              <ExternalIcon size={13} />
+            </a>
+          )}
           {entry.via === 'ai' && (
             <span className="via-ai" title="Proposed by IJF AI and confirmed by this person">
               <SparklesIcon size={11} /> via IJF AI
@@ -115,25 +135,27 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
             </span>
           )}
         </p>
-        <ul className="activity-changes">
-          {entry.changes.map((change) => (
-            <li key={change.field} className={change.contact ? 'has-contact' : undefined}>
-              <span className="change-field">
-                {FIELDS[change.field].icon} {FIELDS[change.field].label}
-                {change.contact && (
-                  <span className="change-contact" title={`For ${change.contact.value}${change.contact.student ? `, ${change.contact.student}'s call` : ''}`}>
-                    {change.contact.field === 'phone' ? <PhoneIcon size={11} /> : <MailIcon size={11} />}
-                    {change.contact.value}
-                    {/* A remark: whose call it was (a number can be with several students). */}
-                    {change.field === 'contactRemark' && change.contact.student && <span className="change-student">· {change.contact.student}</span>}
-                  </span>
-                )}
-              </span>
-              <span className={`change-kind ${change.change}`}>{change.change}</span>
-              <ChangeValues change={change} />
-            </li>
-          ))}
-        </ul>
+        {entry.changes.length > 0 && (
+          <ul className="activity-changes">
+            {entry.changes.map((change) => (
+              <li key={change.field} className={change.contact ? 'has-contact' : undefined}>
+                <span className="change-field">
+                  {fieldOf(change.field).icon} {fieldOf(change.field).label}
+                  {change.contact && (
+                    <span className="change-contact" title={`For ${change.contact.value}${change.contact.student ? `, ${change.contact.student}'s call` : ''}`}>
+                      {change.contact.field === 'phone' ? <PhoneIcon size={11} /> : <MailIcon size={11} />}
+                      {change.contact.value}
+                      {/* A remark: whose call it was (a number can be with several students). */}
+                      {change.field === 'contactRemark' && change.contact.student && <span className="change-student">· {change.contact.student}</span>}
+                    </span>
+                  )}
+                </span>
+                <span className={`change-kind ${change.change}`}>{change.change}</span>
+                <ChangeValues change={change} />
+              </li>
+            ))}
+          </ul>
+        )}
         {problem && (
           <p className="activity-notice" role="status">
             {problem}
@@ -149,13 +171,14 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
 
 interface Filters {
   email: string;
-  action: '' | ActivityAction;
+  action: '' | ActivityAction | 'new-job'; // new-job: the jobs added by hand
   q: string;
 }
 const NO_FILTERS: Filters = { email: '', action: '', q: '' };
 
 // The activity record: who added, changed or removed which job's HR details (phone numbers, emails,
-// students, notes) and when, newest first, by day. Filters: person, kind of change, job or company.
+// students, notes) and when, and who added a job by hand (an opening the scraper missed, with the HR
+// contact typed with it), newest first, by day. Filters: person, kind of change, job or company.
 // A job's title opens its details window. Only for signed-in people (the server checks).
 export default function ActivityLog() {
   const meta = useApi<Meta>('meta');
@@ -213,18 +236,15 @@ export default function ActivityLog() {
   const openJob = async (entry: ActivityEntry) => {
     setOpening({ id: entry._id, problem: '' });
     try {
-      const params = { id: entry.job.id, days: 1, view: entry.job.set === 'nonfiltered' ? 'nonfiltered' : undefined };
-      const res = await fetch(apiUrl('jobs', params), { headers: await signInHeader() });
-      const body = (await res.json().catch(() => null)) as JobsResponse | null;
-      const job = body?.items?.[0];
-      if (!res.ok || !job) {
-        setOpening({ id: entry._id, problem: 'This job is no longer stored (jobs are kept for 90 days after they were last seen).' });
+      const job = await fetchJob(entry.job.id, entry.job.set);
+      if (!job) {
+        setOpening({ id: entry._id, problem: JOB_NOT_STORED });
         return;
       }
       setOpening(null);
       setDetail(saved[job._id] ?? job);
     } catch {
-      setOpening({ id: entry._id, problem: 'Could not reach the server. Check your connection and try again.' });
+      setOpening({ id: entry._id, problem: OFFLINE });
     }
   };
 
@@ -241,7 +261,7 @@ export default function ActivityLog() {
       <PageHeader
         eyebrow="Team"
         title="Activity"
-        subtitle="Who added, changed or removed HR phone numbers, emails, students and notes, on which job, and when. Newest first."
+        subtitle="Who added, changed or removed HR phone numbers, emails, students and notes, and who added jobs the scraper missed: on which job, and when. Newest first."
       />
 
       <section className="card card-flush activity-card">
@@ -282,6 +302,7 @@ export default function ActivityLog() {
               { value: 'added', label: 'Added' },
               { value: 'edited', label: 'Edited' },
               { value: 'removed', label: 'Removed' },
+              { value: 'new-job', label: 'New jobs' },
             ]}
           />
           {filtered && (
@@ -315,7 +336,10 @@ export default function ActivityLog() {
               <strong>{filtered ? 'No changes match these filters.' : 'No changes recorded yet.'}</strong>
             </p>
             {!filtered && (
-              <p className="muted">When someone adds or changes a job&apos;s HR phone numbers, emails, students or notes, it shows up here with their email.</p>
+              <p className="muted">
+                When someone adds or changes a job&apos;s HR phone numbers, emails, students or notes, or adds a job the scraper missed, it shows up here
+                with their email.
+              </p>
             )}
           </div>
         ) : (

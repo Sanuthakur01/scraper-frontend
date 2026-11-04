@@ -1,6 +1,7 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { webUrl } from '@/lib/addedJob';
 import { MAX_CONTACT_ENTRIES, MAX_STUDENTS, type FollowUpInput, type JobContact } from '@/lib/types';
-import { CloseIcon, LinkIcon, MailIcon, NoteIcon, PhoneIcon, PlusIcon, UserIcon, UsersIcon } from './Icons';
+import { CloseIcon, LinkIcon, MailIcon, NoteIcon, PhoneIcon, PlusIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
 
 // The HR details the team types in for a job (the HR people's names and profile links, phone numbers,
 // emails, the students it is assigned to and notes), as edited in the job's details window. The server checks everything again
@@ -35,18 +36,9 @@ const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}$/i;
 const HR_NAME_LIMIT = 80;
 const PROFILE_LIMIT = 300;
 
-// "linkedin.com/in/riya" -> "https://linkedin.com/in/riya". A web address (http or https, with a
-// domain), or null: never another kind of link (the server's profileUrl).
-export function profileUrl(text: string): string | null {
-  const value = /^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`;
-  try {
-    const url = new URL(value);
-    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.') || url.username || url.password) return null;
-    return url.href;
-  } catch {
-    return null;
-  }
-}
+// "linkedin.com/in/riya" -> "https://linkedin.com/in/riya", or null when it is not a web address (lib/addedJob.ts,
+// shared with the job links of the jobs added by hand).
+export const profileUrl = webUrl;
 const profileKey = (url: string) => url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '');
 
 // A profile link as shown: "linkedin.com/in/riya-sharma" (no "https://www." or trailing slash).
@@ -62,6 +54,15 @@ export const LISTS: Record<
   phone: { label: 'Phone numbers', name: 'Phone number', first: '98765 43210', other: 'Another number', add: 'Add another number', max: MAX_CONTACT_ENTRIES, type: 'tel', mode: 'tel' },
   email: { label: 'Email addresses', name: 'Email ID', first: 'hr@company.com', other: 'Another email', add: 'Add another email', max: MAX_CONTACT_ENTRIES, type: 'text', mode: 'email' },
   assignedTo: { label: 'Assigned to', name: 'Student', first: 'Student name', other: 'Another student', add: 'Add another student', max: MAX_STUDENTS, type: 'text', mode: 'text' },
+};
+
+// The icon beside each list of boxes while editing.
+export const LIST_ICONS: Record<ListKey, ReactNode> = {
+  hrName: <UserIcon size={14} />,
+  hrProfile: <LinkIcon size={14} />,
+  phone: <PhoneIcon size={14} />,
+  email: <MailIcon size={14} />,
+  assignedTo: <UsersIcon size={14} />,
 };
 
 // "98765 43210, 080 4123 4567" -> ["98765 43210", "080 4123 4567"]
@@ -297,6 +298,47 @@ export function EntryList({
         <button type="button" className="entry-add" onClick={onAdd}>
           <PlusIcon size={13} /> {list.add}
         </button>
+      )}
+    </div>
+  );
+}
+
+// Where the HR contact was found (FOUND_BY): needed to save HR names, profile links, numbers and emails that are
+// added or changed. Its select is found by data-entry="foundBy-0" (to put the cursor in it).
+export function FoundByField({ id, value, error, onChange }: { id: string; value: string; error?: FieldError; onChange: (value: string) => void }) {
+  return (
+    <div className="edit-field">
+      <label className="edit-label" htmlFor={id}>
+        <TargetIcon size={14} />
+        Found by
+        <span className="required-mark" aria-hidden="true">
+          *
+        </span>
+      </label>
+      <select
+        id={id}
+        data-entry="foundBy-0"
+        className={`select found-by-select ${error ? 'has-error' : ''} ${value ? '' : 'is-empty'}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={Boolean(error) || undefined}
+        aria-describedby={`${id}-note`}
+      >
+        <option value="">Choose where you found the HR contact…</option>
+        {FOUND_BY.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {error ? (
+        <p className="field-error" id={`${id}-note`} role="alert">
+          {error.message}
+        </p>
+      ) : (
+        <p className="edit-hint" id={`${id}-note`}>
+          Needed to save HR names, profile links, phone numbers and emails.
+        </p>
       )}
     </div>
   );

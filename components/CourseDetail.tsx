@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useApi } from '@/lib/api';
 import { useDataView } from '@/lib/dataView';
-import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, isShownCity, percent, periodFrom, periodParams, periodQuery } from '@/lib/format';
+import { COURSE_COLORS, courseInitials, experienceBands, formatDate, formatDay, formatNumber, isShownCity, percent, periodFrom, periodParams, periodQuery, siteNames } from '@/lib/format';
 import { filtersFromAddress, POSTING_AGES, useJobFilters, type JobFilters } from '@/lib/jobFilters';
 import type { CourseDetailResponse, CourseId, Meta, PostingAgeBucket, TrendsResponse } from '@/lib/types';
 import {
@@ -144,7 +144,7 @@ export default function CourseDetail({ courseId }: { courseId: CourseId }) {
           </Link>
         }
         title={course.name}
-        subtitle={`New openings for this course on ${meta.data.platforms.join(', ')} · ${period.from ? period.label : formatDay(d.anchor)}`}
+        subtitle={`New openings for this course on ${siteNames(meta.data.platforms).join(', ')} · ${period.from ? period.label : formatDay(d.anchor)}`}
         actions={
           <PeriodTabs
             period={period}

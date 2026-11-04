@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
-import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, periodParams, shownCities, type ExperienceRange, type Period } from '@/lib/format';
+import { COURSE_COLORS, experienceRangeText, formatDate, formatDateTime, formatNumber, percent, periodParams, shownCities, siteNames, type ExperienceRange, type Period } from '@/lib/format';
 import { useDataView } from '@/lib/dataView';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { Course, CourseId, InsightsResponse, SkillGapsResponse } from '@/lib/types';
@@ -209,7 +209,7 @@ export default function SkillsPanel({ courses, period, experience, requested, lo
                 <summary>How is this calculated?</summary>
                 <p>
                   Counted from {formatNumber(data.postings)} {courseName} job posts collected
-                  {data.source.platforms.length ? ` from ${data.source.platforms.join(', ')}` : ''}
+                  {siteNames(data.source.platforms).length ? ` from ${siteNames(data.source.platforms).join(', ')}` : ''}
                   {data.source.firstSeenFrom ? `, first seen ${formatDate(data.source.firstSeenFrom)} – ${formatDate(data.source.firstSeenTo)}` : ''}{' '}
                   (India, {view === 'nonfiltered' ? 'only the jobs our filters leave out' : view === 'all' ? 'the Filtered and Non-filtered jobs together' : `${experienceRangeText(experience)} years' experience`}). Last updated {formatDateTime(data.source.lastRefreshed)}.
                 </p>

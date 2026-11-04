@@ -13,8 +13,10 @@ import {
   formatUpdated,
   LEFT_OUT_LABELS,
   listingOrder,
+  listingTitle,
   shownCities,
 } from '@/lib/format';
+import { adderName } from '@/lib/addedJob';
 import type { Course, FollowUpInput, Job, JobsResponse } from '@/lib/types';
 import {
   ContactIcons,
@@ -22,8 +24,9 @@ import {
   EntryList,
   ERROR_ORDER,
   errorFromServer,
-  FOUND_BY,
+  FoundByField,
   foundByLabel,
+  LIST_ICONS,
   LIST_ORDER,
   LISTS,
   profileLabel,
@@ -38,15 +41,6 @@ import {
 import { AlertIcon, BriefcaseIcon, BuildingIcon, CheckIcon, ChevronRightIcon, CloseIcon, CopyIcon, ExternalIcon, LinkIcon, MailIcon, MapPinIcon, NoteIcon, PencilIcon, PhoneIcon, PlusIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
 import { HiringAgain, KnownHr } from './KnownHr';
 import { SectionError } from './PageParts';
-
-// The icon beside each list of boxes while editing.
-const LIST_ICONS: Record<ListKey, ReactNode> = {
-  hrName: <UserIcon size={14} />,
-  hrProfile: <LinkIcon size={14} />,
-  phone: <PhoneIcon size={14} />,
-  email: <MailIcon size={14} />,
-  assignedTo: <UsersIcon size={14} />,
-};
 
 // Other openings listed under the same company name: how far back, and how many before "Show all".
 const COMPANY_DAYS = 90;
@@ -498,44 +492,15 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                       </div>
                       {/* Where the HR contact was found: right after the contact fields, needed to save them. */}
                       {key === 'email' && (
-                        <div className="edit-field">
-                          <label className="edit-label" htmlFor={foundById}>
-                            <TargetIcon size={14} />
-                            Found by
-                            <span className="required-mark" aria-hidden="true">
-                              *
-                            </span>
-                          </label>
-                          <select
-                            id={foundById}
-                            data-entry="foundBy-0"
-                            className={`select found-by-select ${errors.foundBy ? 'has-error' : ''} ${draft.foundBy ? '' : 'is-empty'}`}
-                            value={draft.foundBy}
-                            onChange={(e) => {
-                              const foundBy = e.target.value;
-                              setDraft((d) => (d ? { ...d, foundBy } : d));
-                              setErrors((errs) => ({ ...errs, foundBy: undefined }));
-                            }}
-                            aria-invalid={Boolean(errors.foundBy) || undefined}
-                            aria-describedby={`${foundById}-note`}
-                          >
-                            <option value="">Choose where you found the HR contact…</option>
-                            {FOUND_BY.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                          {errors.foundBy ? (
-                            <p className="field-error" id={`${foundById}-note`} role="alert">
-                              {errors.foundBy.message}
-                            </p>
-                          ) : (
-                            <p className="edit-hint" id={`${foundById}-note`}>
-                              Needed to save HR names, profile links, phone numbers and emails.
-                            </p>
-                          )}
-                        </div>
+                        <FoundByField
+                          id={foundById}
+                          value={draft.foundBy}
+                          error={errors.foundBy}
+                          onChange={(foundBy) => {
+                            setDraft((d) => (d ? { ...d, foundBy } : d));
+                            setErrors((errs) => ({ ...errs, foundBy: undefined }));
+                          }}
+                        />
                       )}
                     </Fragment>
                   ))}
@@ -760,13 +725,18 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                   {job.postedAt ? <span title={formatDateTime(job.postedAt)}>{formatPosted(job.postedAt)}</span> : 'Date not shown'}
                 </Fact>
                 <Fact label="Found by us">{formatDate(job.firstSeenAt)}</Fact>
+                {job.addedBy && (
+                  <Fact label="Added by">
+                    {adderName(job.addedBy)} · {formatDateTime(job.addedBy.at)}
+                  </Fact>
+                )}
                 {job.leftOutBy && <Fact label="Left out because">{LEFT_OUT_LABELS[job.leftOutBy]}</Fact>}
                 <Fact label="Listed on">
                   {links.length ? (
                     <ul className="listings">
                       {links.map((platform) => (
                         <li key={platform}>
-                          <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={`Open on ${platform}`}>
+                          <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={listingTitle(platform)}>
                             {platform}
                             <ExternalIcon size={12} />
                           </a>

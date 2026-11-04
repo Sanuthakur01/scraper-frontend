@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { apiUrl } from '@/lib/api';
+import { fetchJob, JOB_NOT_STORED, OFFLINE } from '@/lib/api';
 import { COURSE_COLORS, formatDateTime, formatNumber, formatUpdated } from '@/lib/format';
 import { contactsText, outcomeKey } from '@/lib/performance';
-import { signInHeader } from '@/lib/session';
-import type { Course, HotCompany, Job, JobsResponse, PerformanceRow } from '@/lib/types';
+import type { Course, HotCompany, Job, PerformanceRow } from '@/lib/types';
 import { CheckIcon, CloseIcon, CopyIcon, FlameIcon, MailIcon, PhoneIcon } from './Icons';
 import JobDetailsModal, { copyText, CopyButton } from './JobDetailsModal';
 
@@ -16,7 +15,7 @@ export interface Opening {
 }
 
 // Opens a number's job (in the set it was in) in the job's window, if it is still stored. onSaved: something was
-// saved in the window (the page's numbers may change).
+// saved in the window (the page's numbers may change). showJob: a job already loaded (e.g. a row of a list).
 export function useJobWindow(courses: Course[] | undefined, onSaved: () => void) {
   const [detail, setDetail] = useState<Job | null>(null);
   const [saved, setSaved] = useState<Record<string, Job>>({});
@@ -25,20 +24,18 @@ export function useJobWindow(courses: Course[] | undefined, onSaved: () => void)
   const openJob = async (id: string, ref: PerformanceRow['job']) => {
     setOpening({ id, problem: '' });
     try {
-      const params = { id: ref.id, days: 1, view: ref.set === 'nonfiltered' ? 'nonfiltered' : undefined };
-      const res = await fetch(apiUrl('jobs', params), { headers: await signInHeader() });
-      const body = (await res.json().catch(() => null)) as JobsResponse | null;
-      const job = body?.items?.[0];
-      if (!res.ok || !job) {
-        setOpening({ id, problem: 'This job is no longer stored (jobs are kept for 90 days after they were last seen).' });
+      const job = await fetchJob(ref.id, ref.set);
+      if (!job) {
+        setOpening({ id, problem: JOB_NOT_STORED });
         return;
       }
       setOpening(null);
       setDetail(saved[job._id] ?? job);
     } catch {
-      setOpening({ id, problem: 'Could not reach the server. Check your connection and try again.' });
+      setOpening({ id, problem: OFFLINE });
     }
   };
+  const showJob = (job: Job) => setDetail(saved[job._id] ?? job);
 
   const modal =
     detail && courses ? (
@@ -55,7 +52,7 @@ export function useJobWindow(courses: Course[] | undefined, onSaved: () => void)
       />
     ) : null;
 
-  return { opening, openJob, modal };
+  return { opening, openJob, showJob, modal };
 }
 
 // "Called Aman Verma · today, 4:28 pm" / "3 calls to students · latest today, 4:28 pm"

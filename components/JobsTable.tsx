@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import JobDetailsModal from '@/components/JobDetailsModal';
 import JobRow from '@/components/JobRow';
+import AddJobForm from './AddJobForm';
 import { useAccess } from './AuthGate';
 import { CONTACT_COLUMNS, EXTRA_COLUMNS, hrHead } from './ContactCell';
 import { useApi, useApiUrl } from '@/lib/api';
@@ -15,6 +16,7 @@ import {
   ColumnsIcon,
   DownloadIcon,
   ListIcon,
+  PlusIcon,
   SearchIcon,
 } from './Icons';
 import { CardHeader, SectionError } from './PageParts';
@@ -113,7 +115,12 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
   const side = useSideScroll();
   // The HR cell being edited (one at a time: a row and a column key), and whether this person may edit.
   const [editingCell, setEditingCell] = useState<{ jobId: string; column: string } | null>(null);
-  const mayEdit = useAccess()?.can('edit-hr-details') ?? false;
+  const access = useAccess();
+  const mayEdit = access?.can('edit-hr-details') ?? false;
+  // "Add a job" (an opening the scraper missed): its window, and how many were added, so the list loads again.
+  const mayAdd = access?.can('add-jobs') ?? false;
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(0);
   const section = useRef<HTMLElement>(null);
 
   // Previous / Next: show the new page from its first job. The buttons are at the bottom of the list,
@@ -135,7 +142,7 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
   }, [filters, periodKey]);
 
   const params = { ...filters, ...(lockedCourse ? { course: lockedCourse } : {}), ...periodParams(period) };
-  const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: 25 });
+  const jobs = useApi<JobsResponse>('jobs', { ...params, page, limit: 25, r: added || undefined });
   const data = jobs.data;
   const courseName = Object.fromEntries(courses.map((c) => [c.id, c.name]));
   const withContact = (data?.withContact ?? 0) + (contactChange.base === data ? contactChange.n : 0);
@@ -168,6 +175,11 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
             <a className="btn" href={apiUrl('jobs.csv', params)}>
               <DownloadIcon /> Download CSV
             </a>
+            {mayAdd && (
+              <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+                <PlusIcon /> Add a job
+              </button>
+            )}
           </>
         }
       />
@@ -303,6 +315,16 @@ export default function JobsTable({ courses, meta, period, filterState, lockedCo
           saved={savedRows}
           onClose={() => setDetail(null)}
           onSaved={onSaved}
+          onOpenJob={(job) => setDetail(savedRows[job._id] ?? job)}
+        />
+      )}
+
+      {adding && (
+        <AddJobForm
+          courses={courses}
+          defaultCourse={lockedCourse}
+          onClose={() => setAdding(false)}
+          onSaved={() => setAdded((n) => n + 1)}
           onOpenJob={(job) => setDetail(savedRows[job._id] ?? job)}
         />
       )}

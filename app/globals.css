@@ -10372,3 +10372,207 @@ textarea.contact-input.call-note {
 .known-hr .field-error {
   margin: 0;
 }
+
+/* ---------- Jobs added by the team (components/AddJobForm.tsx, AddedJobs.tsx) ---------- */
+
+/* Under a job's company name: "Added by Asha", a job the team added by hand */
+.added-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--good-text) 30%, transparent);
+  background: var(--good-bg);
+  color: var(--good-text);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The "Add a job" window: the incoming-call window's frame, in the brand colour */
+.addjob-header {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, transparent) 0%, transparent 100%);
+}
+
+.addjob-header-icon {
+  background: var(--accent-gradient);
+  box-shadow: 0 6px 18px -8px var(--accent);
+}
+
+/* Boxes side by side keep their label and box together when the other has a hint or a problem under it */
+.addjob-panel .call-grid {
+  align-items: start;
+}
+
+.addjob-new-company {
+  color: var(--accent-text);
+}
+
+/* The same posting is stored already: the alert with "Open it" beside it */
+.addjob-duplicate {
+  align-items: center;
+}
+
+.addjob-duplicate > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.addjob-duplicate .btn {
+  flex: none;
+}
+
+/* The same title at the same company, stored lately: a quiet list that doesn't stop Save */
+.addjob-similar {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.addjob-similar-title {
+  margin: 0;
+  font-size: var(--text-footnote);
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+
+.addjob-similar .opening {
+  padding: 8px 12px;
+  font-size: var(--text-footnote);
+}
+
+.addjob-open-problem {
+  margin: 0;
+  padding: 0 12px 8px;
+}
+
+.addjob-note {
+  margin: 0;
+}
+
+/* The optional HR contact: set apart under a line (its title sits in the line) */
+.addjob-hr {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+  border-top: 1px solid var(--border);
+}
+
+.addjob-hr > legend {
+  padding-right: 8px;
+}
+
+.addjob-hr .call-grid {
+  margin-top: 4px;
+}
+
+.addjob-optional {
+  font-weight: 500;
+}
+
+/* The page's five boxes: where fewer fit in a row, the first (all the jobs added) gets a row of its own */
+@media (max-width: 1100px) {
+  .added-kpis > .kpi:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The page's table */
+.added-table td,
+.added-table th[scope='row'] {
+  vertical-align: top;
+}
+
+.added-job {
+  min-width: 220px;
+  text-align: left;
+}
+
+.added-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-footnote);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Filtered or Non-filtered: the list the job went to (and why our filters leave it out) */
+.added-set {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.added-set.is-filtered {
+  background: var(--good-bg);
+  color: var(--good-text);
+}
+
+.added-set.is-nonfiltered {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.added-reason {
+  display: flex;
+  width: fit-content;
+}
+
+.added-remove {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.added-remove .field-error {
+  display: block;
+  max-width: 220px;
+  margin-top: 4px;
+  white-space: normal;
+}
+
+/* Activity: a job added by hand ("New job", "New company") and the link it was added with */
+.new-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--good-text) 30%, transparent);
+  background: var(--good-bg);
+  color: var(--good-text);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.new-badge.is-company {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.activity-link {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+}
+
+.activity-link:hover {
+  background: var(--surface-hover);
+  color: var(--link);
+}
+
+.activity-job-gone {
+  color: var(--text-primary);
+  font-weight: 650;
+}

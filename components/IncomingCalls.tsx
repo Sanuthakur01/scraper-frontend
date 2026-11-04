@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useState, type CSSProperties } from 'react';
 import { ApiError, apiUrl, sendJson, useApi } from '@/lib/api';
 import { COURSE_COLORS, courseInitials, dayHeading, formatDate, formatNumber, formatTime, istDayOf, periodFrom, periodParams } from '@/lib/format';
 import { ACTIVITY_PERIODS } from '@/lib/performance';
@@ -12,28 +12,12 @@ import { useAccess } from './AuthGate';
 import IncomingCallForm, { CALL_OUTCOMES, outcomeLabel, sourceLabel } from './IncomingCallForm';
 import { BuildingIcon, CalendarIcon, CheckIcon, CloseIcon, PhoneIncomingIcon, SearchIcon } from './Icons';
 import { CopyButton } from './JobDetailsModal';
-import { CardHeader, FilterKpi, PageError, PageHeader, PageSkeleton, SectionError } from './PageParts';
+import { CardHeader, FilterKpi, Kpi, PageError, PageHeader, PageSkeleton, SectionError } from './PageParts';
 import PeriodTabs from './PeriodTabs';
 
 type Where = '' | 'in' | 'out'; // all, in our HR database, not in it
 const ADMINS = ['ADMIN', 'SUPER_ADMIN'];
 const companiesOf = (calls: IncomingCall[]) => new Set(calls.map((c) => c.companyKey)).size;
-
-// A headline box that only counts.
-function Kpi({ icon, name, value, note }: { icon: ReactNode; name: string; value: number | null; note: string }) {
-  return (
-    <div className="kpi">
-      <div className="kpi-top">
-        <span className="kpi-badge" aria-hidden="true">
-          {icon}
-        </span>
-        <span className="kpi-name">{name}</span>
-      </div>
-      <p className="kpi-value">{value == null ? '—' : formatNumber(value)}</p>
-      <p className="kpi-period">{note}</p>
-    </div>
-  );
-}
 
 // The Incoming calls page (/incoming-calls, from its box on Home and from Assign numbers): the HR calls to our
 // students the team logged in the period (today by default), newest first. Boxes: how many calls, how many companies

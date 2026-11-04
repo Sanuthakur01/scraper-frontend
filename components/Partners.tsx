@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Fragment, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatDate, formatNumber, percent, shownCities } from '@/lib/format';
+import { COURSE_COLORS, formatDate, formatNumber, percent, shownCities, siteNames } from '@/lib/format';
 import type { CourseId, Meta, Partner, PartnersResponse, RoleJobsResponse } from '@/lib/types';
 import CompanyJobs from './CompanyJobs';
 import { ArrowDownIcon, ArrowRightIcon, BriefcaseIcon, BuildingIcon, CheckIcon, ChevronRightIcon, DownloadIcon, LayersIcon, PhoneIcon, SearchIcon } from './Icons';
@@ -299,7 +299,7 @@ export default function Partners() {
         </div>
       </section>
       <p className="page-footnote">
-        Based on {formatNumber(data.jobs)} openings collected from {meta.data.platforms.join(', ')}.
+        Based on {formatNumber(data.jobs)} openings collected from {siteNames(meta.data.platforms).join(', ')}.
       </p>
     </main>
   );

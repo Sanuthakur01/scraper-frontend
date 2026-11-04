@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDataView, viewParam, type DataView } from './dataView';
 import { signInHeader } from './session';
-import type { ApiState } from './types';
+import type { ApiState, Job, JobsResponse } from './types';
 
 export type QueryParams = Record<string, string | number | null | undefined>;
 
@@ -20,15 +20,18 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? '').trim().replace(/\/+$/, 
 export const apiUrl = (path: string, params?: QueryParams) => `${API_BASE}/api/${path}${toQuery(params)}`;
 
 // A change the server refused: its message (e.g. "This number already exists.") and, sometimes, a
-// second line with more detail.
+// second line with more detail. body: the whole answer, for refusals that say more (e.g. which job is the same).
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly detail = '',
+    readonly body: Record<string, unknown> | null = null,
   ) {
     super(message);
   }
 }
+
+export const OFFLINE = 'Could not reach the server. Check your connection and try again.';
 
 // Sends a change, with the person's sign-in. Throws an ApiError with the server's own message when
 // refused (e.g. "Your sign-in has expired…").
@@ -38,11 +41,22 @@ export async function sendJson<T>(path: string, method: 'PUT' | 'POST', body: un
     const headers = { 'Content-Type': 'application/json', ...(await signInHeader()) };
     res = await fetch(apiUrl(path), { method, headers, body: JSON.stringify(body) });
   } catch {
-    throw new ApiError('Could not reach the server. Check your connection and try again.');
+    throw new ApiError(OFFLINE);
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(data?.error ?? `Could not save (error ${res.status}).`, data?.detail ?? '');
+  if (!res.ok) throw new ApiError(data?.error ?? `Could not save (error ${res.status}).`, data?.detail ?? '', data);
   return data as T;
+}
+
+export const JOB_NOT_STORED = 'This job is no longer stored (jobs are kept for 90 days after they were last seen).';
+
+// One stored job by its id, from the set it was in (the server also looks in the other set, where the rules may
+// have moved it since); null when it is no longer stored. Throws when the server can't be reached.
+export async function fetchJob(id: string, set?: 'filtered' | 'nonfiltered'): Promise<Job | null> {
+  const params = { id, days: 1, view: set === 'nonfiltered' ? 'nonfiltered' : undefined };
+  const res = await fetch(apiUrl('jobs', params), { headers: await signInHeader() });
+  const body = (await res.json().catch(() => null)) as JobsResponse | null;
+  return (res.ok && body?.items?.[0]) || null;
 }
 
 // apiUrl for the jobs the dashboard shows now (Filtered, Non-filtered or All), e.g. for CSV download links.

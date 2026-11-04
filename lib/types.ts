@@ -168,6 +168,15 @@ export interface Job {
   contact: JobContact;
   leftOutBy?: LeftOutReason; // Non-filtered jobs only: why our filters leave it out
   sameCompany?: SameCompany; // only when the company's other jobs have something to say (server sameCompany.js)
+  addedBy?: AddedBy; // added by hand by the team (its platform is TEAM_PLATFORM); missing: found by the scraper
+}
+
+// Who added a job by hand (an opening the scraper missed), and when. email: only on the Jobs added by the team page
+// (GET /api/added-jobs); the job lists (/api/jobs and the like) are public, so they send the name alone.
+export interface AddedBy {
+  email?: string;
+  name: string;
+  at: string;
 }
 
 // What the same company's other jobs (kept and left out, however its name is spelled) say about a job.
@@ -350,6 +359,8 @@ export interface ActivityEntry {
   job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
   changes: ActivityChange[];
   copiedFrom?: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string }; // "Use this HR"
+  newJob?: { url: string; newCompany?: boolean }; // the job was added by hand (newCompany: the first job of its company)
+  removedJob?: { url: string }; // a job added by hand was removed
 }
 
 export interface ActivityResponse {
@@ -530,6 +541,71 @@ export interface HotCompaniesResponse {
   days: number;
   companies: HotCompany[];
   rows: PerformanceRow[];
+}
+
+// ---------- Jobs added by the team (/api/added-jobs): openings the scraper missed, added by hand ----------
+
+// What POST /api/added-jobs takes. The HR boxes are optional (Found by is needed with any of them).
+export interface AddedJobInput {
+  company: string;
+  title: string;
+  url: string;
+  course: CourseId;
+  location?: string;
+  experience?: string;
+  hrName?: string[];
+  hrProfile?: string[];
+  phone?: string[];
+  email?: string[];
+  foundBy?: string;
+}
+
+// A job already stored that a new one may be (the same posting, or the same title at the same company).
+export interface AddedJobMatch {
+  _id: string;
+  set: 'filtered' | 'nonfiltered';
+  title: string;
+  company: string;
+  cities: string[];
+  firstSeenAt: string;
+  leftOutBy?: LeftOutReason;
+  addedBy?: AddedBy;
+}
+
+// GET /api/added-jobs/check: what the server makes of the job as typed so far (each part only from what was given).
+export interface AddedJobCheck {
+  course: CourseId | null; // from the job title (null: no title, or no course matches it)
+  site: 'LinkedIn' | 'Naukri' | 'Indeed' | 'Glassdoor' | null; // the job site the link is a listing of
+  set: 'filtered' | 'nonfiltered';
+  leftOutBy: 'big-company' | 'experience' | 'senior' | null; // why it will be saved under Non-filtered
+  experience: { min: number; max: number | null } | null; // as read from the experience typed
+  experienceUnreadable: boolean; // experience was typed, but can't be read
+  knownCompany: boolean; // the company has jobs in our HR database
+  duplicate: AddedJobMatch | null; // the same posting is stored already: it can't be added again
+  similar: AddedJobMatch[]; // the same title at the same company in the last 30 days, newest first (up to 5)
+}
+
+// A job added by hand, in the set it is stored in.
+export type AddedJob = Job & { set: 'filtered' | 'nonfiltered' };
+
+// POST /api/added-jobs: the job as saved. known: the HR numbers and emails typed with it that the company's other
+// jobs already had: saved, but not counted on the leaderboard again (missing: none).
+export interface AddedJobSaved {
+  job: Job;
+  set: 'filtered' | 'nonfiltered';
+  known?: { phone: string[]; email: string[] };
+}
+
+// GET /api/added-jobs?days= (or ?from=&to=): the jobs added by hand in the period (IST days ending today).
+export interface AddedJobsResponse {
+  from: string;
+  to: string;
+  total: number;
+  filtered: number;
+  nonfiltered: number;
+  withHr: number; // added with HR details typed in
+  people: { email: string; name: string; count: number }[]; // who added them, the most first
+  items: AddedJob[]; // the latest added first (at most 500)
 }
 
 // ---------- IJF AI (/api/chat…) ----------

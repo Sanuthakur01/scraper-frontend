@@ -1,12 +1,25 @@
 import { useState } from 'react';
-import { COURSE_COLORS, formatDate, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder, shownCities } from '@/lib/format';
-import type { Job } from '@/lib/types';
+import { adderFirstName, adderName } from '@/lib/addedJob';
+import { COURSE_COLORS, formatDate, formatDateTime, formatExperience, formatPosted, LEFT_OUT_LABELS, listingOrder, listingTitle, shownCities } from '@/lib/format';
+import type { AddedBy, Job } from '@/lib/types';
 import ContactCell, { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
 import { contactSummary, ContactIcons } from './ContactForm';
-import { ExternalIcon } from './Icons';
+import { ExternalIcon, PlusIcon } from './Icons';
 import { HiringAgain } from './KnownHr';
 
 const SKILLS_SHOWN = 3;
+
+// A job the team added by hand (an opening the scraper missed): "Added by Asha", who and when on hover.
+export function AddedByPill({ by }: { by?: AddedBy }) {
+  if (!by) return null;
+  const what = `Added by ${adderName(by)} on ${formatDateTime(by.at)}`;
+  return (
+    <span className="added-pill" title={what}>
+      <PlusIcon size={11} /> Added by {adderFirstName(by)}
+      <span className="sr-only">: {what}</span>
+    </span>
+  );
+}
 
 // A job's skills (Expand): the first few and "+7"; clicking them shows every skill as a tag, and
 // "Show less" folds them again.
@@ -97,9 +110,10 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           </button>
           {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''}
         </span>
-        {Boolean(job.leftOutBy || summary.any || job.sameCompany?.earlier) && (
+        {Boolean(job.leftOutBy || summary.any || job.sameCompany?.earlier || job.addedBy) && (
           <span className="job-tags">
             {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
+            <AddedByPill by={job.addedBy} />
             <HiringAgain same={job.sameCompany} />
             {summary.any && (
               <button
@@ -122,7 +136,7 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
         <ul className="listings">
           {listingOrder(job).map((platform) => (
             <li key={platform}>
-              <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={`Open on ${platform}`}>
+              <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={listingTitle(platform)}>
                 {platform}
                 <ExternalIcon size={12} />
               </a>

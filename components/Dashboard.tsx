@@ -1,14 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useApi } from '@/lib/api';
-import { formatDay, formatNumber, percent, periodFrom, periodParams } from '@/lib/format';
+import { formatDay, formatNumber, percent, periodFrom, periodParams, siteNames, TEAM_PLATFORM } from '@/lib/format';
 import type { ShowJobs } from '@/lib/jobFilters';
 import type { InsightsResponse, Meta, PlatformsResponse, RoleJobsResponse, Summary, TrendsResponse } from '@/lib/types';
+import AddJobForm from './AddJobForm';
+import { useAccess } from './AuthGate';
+import { useJobWindow } from './ContactList';
 import GlobalSearch from './GlobalSearch';
 import HrDetails from './HrDetails';
-import { LayersIcon, TrendIcon } from './Icons';
+import { LayersIcon, PlusIcon, TrendIcon } from './Icons';
 import Insights from './Insights';
 import JobsDrawer, { type JobsView } from './JobsDrawer';
 import { CardHeader, Freshness, PageError, PageHeader, PageSection, PageSkeleton, Segmented } from './PageParts';
@@ -20,8 +24,8 @@ import StatTiles from './StatTiles';
 import TrendChart from './TrendChart';
 
 // Three facts under the platform chart: the biggest source, jobs listed on several sites, and how many
-// of the searched sites had new jobs (a site with none was probably blocked or down). The first two
-// show their jobs when clicked.
+// of the searched sites had new jobs (a site with none was probably blocked or down; the jobs the team added
+// by hand are not a site). The first two show their jobs when clicked.
 function PlatformFacts({ data, sites, onSelect }: { data: PlatformsResponse | null; sites: number; onSelect: ShowJobs }) {
   const rows = data?.platforms ?? [];
   const total = rows.reduce((n, r) => n + r.total, 0);
@@ -58,7 +62,7 @@ function PlatformFacts({ data, sites, onSelect }: { data: PlatformsResponse | nu
       <div>
         <dt>Sites with new jobs</dt>
         <dd>
-          {rows.filter((r) => r.total > 0).length} <span className="muted">of {sites}</span>
+          {rows.filter((r) => r.total > 0 && r.platform !== TEAM_PLATFORM).length} <span className="muted">of {sites}</span>
         </dd>
       </div>
     </dl>
@@ -74,14 +78,21 @@ export default function Dashboard() {
   // The side panel listing the jobs behind a clicked bar, day or name (null = closed).
   const [panel, setPanel] = useState<JobsView | null>(null);
   const showJobs: ShowJobs = (filters, title) => setPanel({ filters, title });
+  // "Add a job" (an opening the scraper missed): its window, and how many were added, so the numbers load again.
+  const mayAdd = useAccess()?.can('add-jobs') ?? false;
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(0);
+  const r = added || undefined;
 
   const meta = useApi<Meta>('meta');
-  const summary = useApi<Summary>('summary', range);
-  const platforms = useApi<PlatformsResponse>('platforms', range);
-  const trends = useApi<TrendsResponse>('trends', { days: 30 });
-  const insights = useApi<InsightsResponse>('insights', range);
+  const summary = useApi<Summary>('summary', { ...range, r });
+  const platforms = useApi<PlatformsResponse>('platforms', { ...range, r });
+  const trends = useApi<TrendsResponse>('trends', { days: 30, r });
+  const insights = useApi<InsightsResponse>('insights', { ...range, r });
   // The SRE Openings tile: just the count (one job's worth of list).
-  const sre = useApi<RoleJobsResponse>('role-jobs', { role: 'sre', ...range, limit: 1 }, { auth: true });
+  const sre = useApi<RoleJobsResponse>('role-jobs', { role: 'sre', ...range, limit: 1, r }, { auth: true });
+  // The window of a job opened from "Add a job" (the same posting already stored, or the job just saved).
+  const { showJob, modal } = useJobWindow(meta.data?.courses, () => setAdded((n) => n + 1));
 
   if (meta.error) return <PageError title="Could not reach the server" error={meta.error} />;
   if (!meta.data) return <PageSkeleton />;
@@ -110,6 +121,14 @@ export default function Dashboard() {
         }
       >
         <Freshness lastRun={lastRun} scheduleLabel={scheduleLabel} />
+        {mayAdd && (
+          <button type="button" className="btn btn-sm" onClick={() => setAdding(true)}>
+            <PlusIcon size={14} /> Add a job
+          </button>
+        )}
+        <Link className="btn-link" href="/added-jobs">
+          Jobs added by the team
+        </Link>
       </PageHeader>
 
       <GlobalSearch courses={courses} />
@@ -145,7 +164,7 @@ export default function Dashboard() {
             ) : (
               <PlatformTable courses={courses} state={platforms} onSelect={showJobs} />
             )}
-            <PlatformFacts data={platforms.data} sites={meta.data.platforms.length} onSelect={showJobs} />
+            <PlatformFacts data={platforms.data} sites={siteNames(meta.data.platforms).length} onSelect={showJobs} />
           </section>
 
           <section className="card">
@@ -171,6 +190,8 @@ export default function Dashboard() {
       </PageSection>
 
       <JobsDrawer view={panel} period={period} courses={courses} onClose={() => setPanel(null)} />
+      {adding && <AddJobForm courses={courses} onClose={() => setAdding(false)} onSaved={() => setAdded((n) => n + 1)} onOpenJob={showJob} />}
+      {modal}
     </main>
   );
 }

@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useApi, useApiUrl } from '@/lib/api';
-import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, periodParams, shownCities, type Period } from '@/lib/format';
+import { COURSE_COLORS, formatExperience, formatNumber, formatPosted, LEFT_OUT_LABELS, listingOrder, listingTitle, periodParams, shownCities, type Period } from '@/lib/format';
 import type { JobFilters } from '@/lib/jobFilters';
 import type { Course, Job, JobsResponse } from '@/lib/types';
 import { CloseIcon, DownloadIcon, ExternalIcon, MailIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
 import JobDetailsModal from './JobDetailsModal';
+import { AddedByPill } from './JobRow';
 import { SectionError } from './PageParts';
 
 // What was clicked on the dashboard: a heading for the panel, and the job list filters behind it.
@@ -112,12 +113,13 @@ function Panel({ view, period, courses, onClose }: { view: JobsView; period: Per
                   </span>
                   <div className="drawer-job-meta">
                     {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
+                    <AddedByPill by={job.addedBy} />
                     <span className="meta-pill">{formatExperience(job)}</span>
                     {job.salaryText && !/not disclosed/i.test(job.salaryText) && <span className="meta-pill">{job.salaryText}</span>}
                     <ul className="listings">
                       {links.map((platform) => (
                         <li key={platform}>
-                          <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={`Open on ${platform}`}>
+                          <a className="site-chip" href={job.links[platform]} target="_blank" rel="noopener noreferrer" title={listingTitle(platform)}>
                             {platform}
                             <ExternalIcon size={12} />
                           </a>

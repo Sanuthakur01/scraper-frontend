@@ -219,6 +219,14 @@ export function formatPosted(value?: string | null) {
 export const listingOrder = (job: Job) =>
   [job.primaryPlatform, ...job.platforms.filter((p) => p !== job.primaryPlatform)].filter((p) => job.links[p]);
 
+// The platform of the jobs the team adds by hand (openings the scraper missed; the server's TEAM_PLATFORM): their
+// link is under it. It is not a job site, so the lists of sites searched leave it out (the site filter keeps it).
+export const TEAM_PLATFORM = 'Added by team';
+export const siteNames = (platforms: string[]) => platforms.filter((p) => p !== TEAM_PLATFORM);
+
+// The hover text of a job's link on a platform.
+export const listingTitle = (platform: string) => (platform === TEAM_PLATFORM ? 'Open the link the team added' : `Open on ${platform}`);
+
 export function formatExperience(job: Job) {
   if (job.experienceMin == null) return job.experienceText || 'Not stated';
   if (job.experienceMax != null) return `${job.experienceMin}–${job.experienceMax} yrs`;
