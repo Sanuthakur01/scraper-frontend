@@ -5,7 +5,7 @@
 // user → Metadata → Public). Anyone else who signs in sees "No access". Sign-ups are restricted in
 // Clerk, so accounts are only created or invited there.
 
-export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'PLACEMENT_STAFF', 'RESEARCH_TEAM'] as const;
+export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'PLACEMENT_STAFF', 'RESEARCH_TEAM', 'STUDENT_MANAGEMENT'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -13,6 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Admin',
   PLACEMENT_STAFF: 'Placement staff',
   RESEARCH_TEAM: 'Research team',
+  STUDENT_MANAGEMENT: 'Student management',
 };
 
 // What a role may do:
@@ -30,6 +31,7 @@ export const PERMISSIONS: Record<Role, readonly Permission[]> = {
   ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage', 'add-jobs'],
   PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
   RESEARCH_TEAM: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
+  STUDENT_MANAGEMENT: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'], // since 4 Nov 2026, as Placement staff
 };
 
 // The role written in a Clerk user's public metadata, as typed there (to show it on "No access").
