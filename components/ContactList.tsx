@@ -166,6 +166,11 @@ export default function ContactList({
                   </span>
                 )}
                 {row.job.set === 'nonfiltered' && <span className="badge-muted">Non-filtered</span>}
+                {row.copied && (
+                  <span className="badge-muted" title="Copied from another job of the same company (Use this HR): not counted as a new contact">
+                    From an earlier job
+                  </span>
+                )}
               </span>
               {heat && (
                 <span className="hot-badge">
@@ -180,7 +185,7 @@ export default function ContactList({
               )}
             </span>
             <span className="ci-added muted">
-              by {row.actor.name || row.actor.email}
+              {row.copied ? 'copied by' : 'by'} {row.actor.name || row.actor.email}
               <br />
               <time dateTime={row.at} title={formatDateTime(row.at)}>
                 {formatUpdated(row.at)}

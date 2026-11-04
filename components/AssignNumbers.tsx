@@ -40,7 +40,8 @@ export default function AssignNumbers() {
   const period = periodFrom(searchParams, ACTIVITY_PERIODS);
   const meta = useApi<Meta>('meta');
   const [reload, setReload] = useState(0); // bumped after a save in a job's window: its numbers may change
-  const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), r: reload || undefined }, { auth: true });
+  // copies: also the numbers copied from the same company's other job ("Use this HR"), to give out for the new opening.
+  const perf = useApi<PerformanceResponse>('performance', { ...periodParams(period), copies: 1, r: reload || undefined }, { auth: true });
   const hot = useApi<HotCompaniesResponse>('incoming-calls/hot', { r: reload || undefined }, { auth: true });
   const mayRecord = useAccess()?.can('record-outcomes') ?? false;
   const studentsId = useId();

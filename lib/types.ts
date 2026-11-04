@@ -167,6 +167,27 @@ export interface Job {
   links: Record<string, string>;
   contact: JobContact;
   leftOutBy?: LeftOutReason; // Non-filtered jobs only: why our filters leave it out
+  sameCompany?: SameCompany; // only when the company's other jobs have something to say (server sameCompany.js)
+}
+
+// What the same company's other jobs (kept and left out, however its name is spelled) say about a job.
+export interface SameCompany {
+  earlier: number; // its jobs first found on an earlier day than this one: "Hiring again" when 1 or more
+  firstAt: string | null; // when the first of them was found
+  hr: KnownHr | null; // this job has no HR contact typed in: the one saved on another of its jobs ("Use this HR")
+}
+export interface KnownHr {
+  id: string; // the job it is saved on
+  set: 'filtered' | 'nonfiltered';
+  title: string;
+  cities: string[];
+  firstSeenAt: string;
+  hrNames: string[];
+  hrProfiles: string[];
+  phone: string; // as stored: several separated by commas
+  email: string;
+  foundBy: string;
+  savedAt: string | null;
 }
 
 // extra-search: passes the keep rules, but it came from the extra searches (server config/courses.js).
@@ -317,6 +338,7 @@ export interface ActivityChange {
   // Which number or email (contactStudent / contactRemark); student: whose call a remark is about ('' : the
   // number's own, before anyone had it; missing: recorded before a number could go to several students).
   contact?: { field: 'phone' | 'email'; value: string; student?: string };
+  known?: string[]; // phone / email: of the values added, the ones the same company's other jobs already had (copied)
 }
 
 export interface ActivityEntry {
@@ -327,6 +349,7 @@ export interface ActivityEntry {
   via?: 'ai'; // made with IJF AI (confirmed by the person)
   job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
   changes: ActivityChange[];
+  copiedFrom?: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string }; // "Use this HR"
 }
 
 export interface ActivityResponse {
@@ -348,6 +371,7 @@ export interface PerformanceRow {
   companyKey?: string; // the job's company's key: the same company however it is spelled (Assign numbers' calling companies)
   outcomes: ContactOutcome[]; // its follow-ups: one per student it was given to, the first given first
   foundBy?: string; // where it was found ("Apollo": the job's Found by when it was added); '' = not recorded
+  copied?: boolean; // copied from the same company's other job: not a new contact (sent only with ?copies=1)
 }
 
 // The follow-up of one number or email with one student (PUT /api/outcomes): the student it was given to, and
@@ -388,9 +412,9 @@ export interface ReviewRow {
   field: 'phone' | 'email';
   value: string; // as written
   key: string;
-  // Who found it: the person who added it to the job ('team'), the job post ('post'), or before the activity
-  // record began ('earlier').
-  found: { source: 'team' | 'post' | 'earlier'; by: ReviewPerson | null };
+  // Who found it: the person who added it to the job ('team'), copied from the same company's other job ('copy'),
+  // the job post ('post'), or before the activity record began ('earlier').
+  found: { source: 'team' | 'copy' | 'post' | 'earlier'; by: ReviewPerson | null };
   added: { at: string; by: ReviewPerson } | null; // added to the job by the team in the period
   // The latest time it was given to the student up to the period's end (inPeriod: in the period itself); null:
   // taken back since, or given before the record began.

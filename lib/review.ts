@@ -151,13 +151,17 @@ export const byStudent: GroupOf = (row) => {
 
 export const FOUND_POST = 'post';
 export const FOUND_EARLIER = 'earlier';
-// Who found a number: the person who added it, the job post, or before the record began.
+export const FOUND_COPY = 'copy';
+// Who found a number: the person who added it, copied from the same company's other job, the job post, or before
+// the record began.
 export const finderOf = (row: ReviewRow) =>
   row.found.source === 'team' && row.found.by
     ? { key: row.found.by.email, label: personLabel(row.found.by), email: row.found.by.email }
-    : row.found.source === 'post'
-      ? { key: FOUND_POST, label: 'Found in the job post' }
-      : { key: FOUND_EARLIER, label: 'Added before the record began' };
+    : row.found.source === 'copy'
+      ? { key: FOUND_COPY, label: "Copied from the company's earlier job" }
+      : row.found.source === 'post'
+        ? { key: FOUND_POST, label: 'Found in the job post' }
+        : { key: FOUND_EARLIER, label: 'Added before the record began' };
 export const byFinder: GroupOf = (row) => (handledOut(row) ? finderOf(row) : null);
 
 // Only the numbers given out in the period: who gave them.

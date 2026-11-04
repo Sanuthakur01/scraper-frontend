@@ -399,3 +399,13 @@ export const FlameIcon = ({ size = 16, ...p }: P) => (
     <path className="flame-core" d="M12.2 10.5c.5 1.6 1.9 2.6 2.7 3.9.6 1 .9 1.9.9 2.8a3.8 3.8 0 0 1-7.6 0c0-1.4.7-2.6 1.7-3.4.1.9.6 1.6 1.3 1.9-.2-2 .3-3.7 1-5.2z" />
   </svg>
 );
+
+// Two arrows going round: the same company is hiring again.
+export const RepeatIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="m17 2 4 4-4 4" />
+    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+    <path d="m7 22-4-4 4-4" />
+    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+  </Icon>
+);

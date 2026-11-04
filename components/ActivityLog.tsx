@@ -109,6 +109,11 @@ function Entry({ entry, courses, problem, onOpenJob }: { entry: ActivityEntry; c
               <SparklesIcon size={11} /> via IJF AI
             </span>
           )}
+          {entry.copiedFrom && (
+            <span className="badge-muted" title="Use this HR: copied from another job of the same company, not counted as new contacts">
+              copied from &ldquo;{entry.copiedFrom.title || 'an earlier job'}&rdquo;
+            </span>
+          )}
         </p>
         <ul className="activity-changes">
           {entry.changes.map((change) => (

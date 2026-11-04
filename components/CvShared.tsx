@@ -17,10 +17,12 @@ const personName = (p: ReviewPerson) => p.name.trim() || p.email;
 // "3 h", "45 min", "2 days": how long after the number was given to the student the CV was shared.
 const after = (hours: number) => (hours < 1 ? `${Math.max(1, Math.round(hours * 60))} min` : hours < 48 ? `${Math.round(hours)} h` : `${Math.round(hours / 24)} days`);
 
-// Who found the number: the person who added it to the job, the job post, or before the activity record began.
+// Who found the number: the person who added it to the job, the company's earlier job (copied), the job post, or
+// before the activity record began.
+const FOUND_WORDS = { copy: "The company's earlier job", post: 'The job post', earlier: 'Before the record began', team: '' };
 function FoundBy({ row }: { row: ReviewRow }) {
   if (row.found.by) return <span>{personName(row.found.by)}</span>;
-  return <span className="muted">{row.found.source === 'post' ? 'The job post' : 'Before the record began'}</span>;
+  return <span className="muted">{FOUND_WORDS[row.found.source] || FOUND_WORDS.earlier}</span>;
 }
 
 // The CV shared page (/cv-shared, opened from its box on the Home page): every student's call that ended in "CV

@@ -61,7 +61,13 @@ function hoursWords(hours: number | null | undefined) {
 }
 
 const foundWords = (row: ReviewRow) =>
-  row.found.source === 'team' && row.found.by ? personLabel(row.found.by) : row.found.source === 'post' ? 'The job post' : 'Before the record began';
+  row.found.source === 'team' && row.found.by
+    ? personLabel(row.found.by)
+    : row.found.source === 'copy'
+      ? "The company's earlier job"
+      : row.found.source === 'post'
+        ? 'The job post'
+        : 'Before the record began';
 
 // One line per number or email, for a spreadsheet.
 function reviewCsv(rows: ReviewRow[], courseName: (id: string) => string) {

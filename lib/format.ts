@@ -125,7 +125,7 @@ export const periodQuery = (p: Period) => (p.from ? `from=${p.from}&to=${p.to}` 
 
 // Why a Non-filtered job is left out, in words (server: leftOutReason in config/filters.js). 'experience':
 // under the server's EXPERIENCE_MIN, 1 year since 24 Oct 2026, so the fresher jobs; 'senior': over its
-// EXPERIENCE_MAX, 5 years since 30 Oct 2026.
+// EXPERIENCE_MAX (4 since 4 Nov 2026), so the jobs asking for 5 years or more.
 export const LEFT_OUT_LABELS: Record<LeftOutReason, string> = {
   'big-company': 'Large IT services firm',
   experience: 'Fresher',

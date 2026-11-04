@@ -4,6 +4,7 @@ import type { Job } from '@/lib/types';
 import ContactCell, { CONTACT_COLUMNS, EXTRA_COLUMNS, type ContactColumn } from './ContactCell';
 import { contactSummary, ContactIcons } from './ContactForm';
 import { ExternalIcon } from './Icons';
+import { HiringAgain } from './KnownHr';
 
 const SKILLS_SHOWN = 3;
 
@@ -96,9 +97,10 @@ export default function JobRow({ job, courseName, expanded, onOpen, mayEdit, edi
           </button>
           {shownCities(job.cities).length ? ` · ${shownCities(job.cities).join(', ')}` : ''}
         </span>
-        {(job.leftOutBy || summary.any) && (
+        {Boolean(job.leftOutBy || summary.any || job.sameCompany?.earlier) && (
           <span className="job-tags">
             {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
+            <HiringAgain same={job.sameCompany} />
             {summary.any && (
               <button
                 type="button"

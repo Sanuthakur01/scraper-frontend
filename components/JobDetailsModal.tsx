@@ -36,6 +36,7 @@ import {
   type ListKey,
 } from './ContactForm';
 import { AlertIcon, BriefcaseIcon, BuildingIcon, CheckIcon, ChevronRightIcon, CloseIcon, CopyIcon, ExternalIcon, LinkIcon, MailIcon, MapPinIcon, NoteIcon, PencilIcon, PhoneIcon, PlusIcon, TargetIcon, UserIcon, UsersIcon } from './Icons';
+import { HiringAgain, KnownHr } from './KnownHr';
 import { SectionError } from './PageParts';
 
 // The icon beside each list of boxes while editing.
@@ -442,6 +443,7 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                 <BriefcaseIcon size={12} /> {formatExperience(job)}
               </span>
               {job.leftOutBy && <span className="reason-pill">{LEFT_OUT_LABELS[job.leftOutBy]}</span>}
+              <HiringAgain same={job.sameCompany} />
             </div>
           </div>
           <button ref={closeButton} type="button" className="icon-btn job-modal-close" onClick={close} disabled={saving} aria-label="Close" title="Close (Esc)">
@@ -572,171 +574,181 @@ function Modal({ job, courses, saved = {}, onClose, onSaved, onOpenJob }: Props)
                   </div>
                 </fieldset>
               ) : (
-                <dl className="contact-details">
-                  <div className="contact-row">
-                    <dt>
-                      <UserIcon size={14} /> HR name
-                    </dt>
-                    <dd>
-                      {hrNames.length ? (
-                        <>
-                          <ul className="value-list">
-                            {hrNames.map((name) => (
-                              <li key={name}>
-                                <span className="hr-name">{name}</span>
-                                <CopyButton value={name} what="name" />
-                              </li>
-                            ))}
-                          </ul>
-                          {mayEdit && hrNames.length < LISTS.hrName.max && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('hrName', true)}>
-                              Add another HR name
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('hrName')}>Add HR name</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                  <div className="contact-row">
-                    <dt>
-                      <LinkIcon size={14} /> HR profile
-                    </dt>
-                    <dd>
-                      {hrProfiles.length ? (
-                        <>
-                          <ul className="value-list">
-                            {hrProfiles.map((url) => (
-                              <li key={url}>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="profile-link" title={url}>
-                                  {profileLabel(url)}
-                                  <ExternalIcon size={12} />
-                                </a>
-                                <CopyButton value={url} what="profile link" />
-                              </li>
-                            ))}
-                          </ul>
-                          {mayEdit && hrProfiles.length < LISTS.hrProfile.max && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('hrProfile', true)}>
-                              Add another profile link
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('hrProfile')}>Add profile link</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                  <div className="contact-row">
-                    <dt>
-                      <PhoneIcon size={14} /> Phone
-                    </dt>
-                    <dd>
-                      {phones.length ? (
-                        <>
-                          <ul className="value-list">
-                            {phones.map((p) => (
-                              <li key={p}>
-                                <a href={`tel:${p.replace(/[^\d+]/g, '')}`}>{p}</a>
-                                <CopyButton value={p} what="phone number" />
-                              </li>
-                            ))}
-                          </ul>
-                          {contact.phoneSource === 'posting' && <span className="contact-source">From the job post</span>}
-                          {mayEdit && phones.length < LISTS.phone.max && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('phone', true)}>
-                              Add another number
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('phone')}>Add phone number</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                  <div className="contact-row">
-                    <dt>
-                      <MailIcon size={14} /> Email
-                    </dt>
-                    <dd>
-                      {emails.length ? (
-                        <>
-                          <ul className="value-list">
-                            {emails.map((e) => (
-                              <li key={e}>
-                                <a href={`mailto:${e}`}>{e}</a>
-                                <CopyButton value={e} what="email" />
-                              </li>
-                            ))}
-                          </ul>
-                          {contact.emailSource === 'posting' && <span className="contact-source">From the job post</span>}
-                          {mayEdit && emails.length < LISTS.email.max && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('email', true)}>
-                              Add another email
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('email')}>Add email</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                  {contact.foundBy && (
+                <>
+                  <KnownHr
+                    job={job}
+                    mayEdit={mayEdit}
+                    onSaved={(row) => {
+                      onSaved(row);
+                      setJustSaved(true);
+                    }}
+                  />
+                  <dl className="contact-details">
                     <div className="contact-row">
                       <dt>
-                        <TargetIcon size={14} /> Found by
+                        <UserIcon size={14} /> HR name
                       </dt>
                       <dd>
-                        <span className="found-by-tag">{foundByLabel(contact.foundBy) || contact.foundBy}</span>
+                        {hrNames.length ? (
+                          <>
+                            <ul className="value-list">
+                              {hrNames.map((name) => (
+                                <li key={name}>
+                                  <span className="hr-name">{name}</span>
+                                  <CopyButton value={name} what="name" />
+                                </li>
+                              ))}
+                            </ul>
+                            {mayEdit && hrNames.length < LISTS.hrName.max && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('hrName', true)}>
+                                Add another HR name
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('hrName')}>Add HR name</AddButton>
+                        )}
                       </dd>
                     </div>
-                  )}
-                  <div className="contact-row">
-                    <dt>
-                      <UsersIcon size={14} /> Assigned to
-                    </dt>
-                    <dd>
-                      {contact.assignedTo.length ? (
-                        <>
-                          <ul className="student-list" aria-label="Assigned students">
-                            {contact.assignedTo.map((name) => (
-                              <li key={name} className="student-tag">
-                                {name}
-                              </li>
-                            ))}
-                          </ul>
-                          {mayEdit && contact.assignedTo.length < LISTS.assignedTo.max && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('assignedTo', true)}>
-                              Add another student
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('assignedTo')}>Assign students</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                  <div className="contact-row">
-                    <dt>
-                      <NoteIcon size={14} /> Notes
-                    </dt>
-                    <dd>
-                      {contact.remarks ? (
-                        <>
-                          <p className="notes-text">{contact.remarks}</p>
-                          {mayEdit && (
-                            <button type="button" className="btn-link add-another" onClick={() => startEditing('remarks')}>
-                              Edit note
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <AddButton allowed={mayEdit} onClick={() => startEditing('remarks')}>Add a note</AddButton>
-                      )}
-                    </dd>
-                  </div>
-                </dl>
+                    <div className="contact-row">
+                      <dt>
+                        <LinkIcon size={14} /> HR profile
+                      </dt>
+                      <dd>
+                        {hrProfiles.length ? (
+                          <>
+                            <ul className="value-list">
+                              {hrProfiles.map((url) => (
+                                <li key={url}>
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="profile-link" title={url}>
+                                    {profileLabel(url)}
+                                    <ExternalIcon size={12} />
+                                  </a>
+                                  <CopyButton value={url} what="profile link" />
+                                </li>
+                              ))}
+                            </ul>
+                            {mayEdit && hrProfiles.length < LISTS.hrProfile.max && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('hrProfile', true)}>
+                                Add another profile link
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('hrProfile')}>Add profile link</AddButton>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="contact-row">
+                      <dt>
+                        <PhoneIcon size={14} /> Phone
+                      </dt>
+                      <dd>
+                        {phones.length ? (
+                          <>
+                            <ul className="value-list">
+                              {phones.map((p) => (
+                                <li key={p}>
+                                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`}>{p}</a>
+                                  <CopyButton value={p} what="phone number" />
+                                </li>
+                              ))}
+                            </ul>
+                            {contact.phoneSource === 'posting' && <span className="contact-source">From the job post</span>}
+                            {mayEdit && phones.length < LISTS.phone.max && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('phone', true)}>
+                                Add another number
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('phone')}>Add phone number</AddButton>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="contact-row">
+                      <dt>
+                        <MailIcon size={14} /> Email
+                      </dt>
+                      <dd>
+                        {emails.length ? (
+                          <>
+                            <ul className="value-list">
+                              {emails.map((e) => (
+                                <li key={e}>
+                                  <a href={`mailto:${e}`}>{e}</a>
+                                  <CopyButton value={e} what="email" />
+                                </li>
+                              ))}
+                            </ul>
+                            {contact.emailSource === 'posting' && <span className="contact-source">From the job post</span>}
+                            {mayEdit && emails.length < LISTS.email.max && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('email', true)}>
+                                Add another email
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('email')}>Add email</AddButton>
+                        )}
+                      </dd>
+                    </div>
+                    {contact.foundBy && (
+                      <div className="contact-row">
+                        <dt>
+                          <TargetIcon size={14} /> Found by
+                        </dt>
+                        <dd>
+                          <span className="found-by-tag">{foundByLabel(contact.foundBy) || contact.foundBy}</span>
+                        </dd>
+                      </div>
+                    )}
+                    <div className="contact-row">
+                      <dt>
+                        <UsersIcon size={14} /> Assigned to
+                      </dt>
+                      <dd>
+                        {contact.assignedTo.length ? (
+                          <>
+                            <ul className="student-list" aria-label="Assigned students">
+                              {contact.assignedTo.map((name) => (
+                                <li key={name} className="student-tag">
+                                  {name}
+                                </li>
+                              ))}
+                            </ul>
+                            {mayEdit && contact.assignedTo.length < LISTS.assignedTo.max && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('assignedTo', true)}>
+                                Add another student
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('assignedTo')}>Assign students</AddButton>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="contact-row">
+                      <dt>
+                        <NoteIcon size={14} /> Notes
+                      </dt>
+                      <dd>
+                        {contact.remarks ? (
+                          <>
+                            <p className="notes-text">{contact.remarks}</p>
+                            {mayEdit && (
+                              <button type="button" className="btn-link add-another" onClick={() => startEditing('remarks')}>
+                                Edit note
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <AddButton allowed={mayEdit} onClick={() => startEditing('remarks')}>Add a note</AddButton>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                </>
               )}
             </section>
 

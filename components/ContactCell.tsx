@@ -20,6 +20,7 @@ import {
   type FieldKey,
 } from './ContactForm';
 import { CheckIcon, CloseIcon, ExternalIcon, LinkIcon, MailIcon, NoteIcon, PencilIcon, PhoneIcon, UserIcon, UsersIcon } from './Icons';
+import { KnownHr } from './KnownHr';
 
 // One column of the job list's HR details. "HR contact" holds three fields (HR names, phone numbers,
 // emails) so the list fits the window; the others hold one (students, notes, HR profile links). It shows
@@ -398,6 +399,8 @@ export default function ContactCell({ job, column, mayEdit, editing, onEdit, onC
               </li>
             )}
           </ul>
+        ) : column.key === 'contact' && job.sameCompany?.hr ? (
+          <KnownHr job={job} mayEdit={mayEdit} onSaved={onSaved} compact />
         ) : (
           <span className="cell-empty" aria-label={`No ${column.label.toLowerCase()} yet`}>
             —
