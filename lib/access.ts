@@ -5,8 +5,14 @@
 // user → Metadata → Public). Anyone else who signs in sees "No access". Sign-ups are restricted in
 // Clerk, so accounts are only created or invited there.
 
-export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'PLACEMENT_STAFF', 'RESEARCH_TEAM', 'STUDENT_MANAGEMENT'] as const;
+export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'PLACEMENT_STAFF', 'RESEARCH_TEAM', 'STUDENT_MANAGEMENT', 'PRE_PLACEMENT_STAFF'] as const;
 export type Role = (typeof ROLES)[number];
+
+// Other spellings of a role that mean the same role (after case, spaces and hyphens are forgiven).
+const ROLE_ALIASES = new Map<string, Role>([
+  ['PREPLACEMENT_STAFF', 'PRE_PLACEMENT_STAFF'],
+  ['PREEPLACEMENT_STAFF', 'PRE_PLACEMENT_STAFF'],
+]);
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super admin',
@@ -14,6 +20,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   PLACEMENT_STAFF: 'Placement staff',
   RESEARCH_TEAM: 'Research team',
   STUDENT_MANAGEMENT: 'Student management',
+  PRE_PLACEMENT_STAFF: 'Pre-placement staff',
 };
 
 // What a role may do:
@@ -32,6 +39,7 @@ export const PERMISSIONS: Record<Role, readonly Permission[]> = {
   PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
   RESEARCH_TEAM: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
   STUDENT_MANAGEMENT: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'], // since 4 Nov 2026, as Placement staff
+  PRE_PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'], // since 10 Nov 2026, as Placement staff
 };
 
 // The role written in a Clerk user's public metadata, as typed there (to show it on "No access").
@@ -42,9 +50,11 @@ export function rawRole(publicMetadata: unknown): string {
 }
 
 // The user's role, or null when it is missing or not one of ROLES. Letter case, spaces and hyphens
-// are forgiven: "research_team", "Research Team" and "RESEARCH-TEAM" all mean RESEARCH_TEAM.
+// are forgiven: "research_team", "Research Team" and "RESEARCH-TEAM" all mean RESEARCH_TEAM; so are
+// the other spellings in ROLE_ALIASES ("Preplacement staff" means PRE_PLACEMENT_STAFF).
 export function roleFrom(publicMetadata: unknown): Role | null {
-  const role = rawRole(publicMetadata).toUpperCase().replace(/[\s-]+/g, '_');
+  const typed = rawRole(publicMetadata).toUpperCase().replace(/[\s-]+/g, '_');
+  const role = ROLE_ALIASES.get(typed) ?? typed;
   return (ROLES as readonly string[]).includes(role) ? (role as Role) : null;
 }
 
