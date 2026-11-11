@@ -5,7 +5,7 @@ import { Fragment, useState, type CSSProperties } from 'react';
 import { useApi } from '@/lib/api';
 import { COURSE_COLORS, courseInitials, dayHeading, formatNumber, formatUpdated, istDayOf, periodFrom, periodParams } from '@/lib/format';
 import { ACTIVITY_PERIODS } from '@/lib/performance';
-import type { CourseId, Interview, InterviewsResponse, Meta } from '@/lib/types';
+import { notHeld, type CourseId, type Interview, type InterviewsResponse, type Meta } from '@/lib/types';
 import { AlertIcon, BuildingIcon, CalendarIcon, HistoryIcon, SearchIcon, UsersIcon } from './Icons';
 import { CardHeader, FilterKpi, PageError, PageHeader, PageSkeleton, SectionError } from './PageParts';
 import PeriodTabs from './PeriodTabs';
@@ -29,12 +29,12 @@ function roundsIn(items: Interview[]) {
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 // The Interviews page (/interviews, opened from its box on the Home page): the students' interviews the staff
-// list in their Google Sheet, in the period (today by default): the latest day first, each day by time, with
-// the student, course, company, round and room. Boxes at the top: the totals, how many were rescheduled and each
-// course's interviews; the rescheduled and course boxes filter the table, as do its course, round and status
-// chips. A rescheduled interview ("RESCHEDULED" after its row) is listed and marked, but not counted. Read-only:
-// the staff keep editing the sheet, and changes show here within 10 minutes. The period is in the address
-// (?days=1, or ?from=&to=).
+// enter in the LMS ("Today's Interviews"; before 11 Nov 2026, their Google Sheet), in the period (today by
+// default): the latest day first, each day by time, with the student, course, company, round and room. Boxes at
+// the top: the totals, how many were rescheduled or cancelled and each course's interviews; the rescheduled and
+// course boxes filter the table, as do its course, round and status chips. A rescheduled or cancelled interview is
+// listed and marked, but not counted. Read-only: the staff enter and change interviews in the LMS (shown here at
+// once; from the sheet, within 10 minutes). The period is in the address (?days=1, or ?from=&to=).
 export default function Interviews() {
   const router = useRouter();
   const period = periodFrom(useSearchParams(), ACTIVITY_PERIODS);
@@ -50,14 +50,14 @@ export default function Interviews() {
   const { courses } = meta.data;
   const data = state.data;
   const items = data?.items ?? [];
-  // The boxes count the interviews that go ahead: a rescheduled one isn't an interview that day.
-  const held = items.filter((i) => !i.rescheduled);
+  // The boxes count the interviews that go ahead: a rescheduled or cancelled one isn't an interview that day.
+  const held = items.filter((i) => !notHeld(i));
   const query = search.trim().toLowerCase();
   // A row passes the filters, but the one named: a chip's count is the rows it would show, the other filters kept.
   const passes = (i: Interview, except?: 'course' | 'round' | 'status') =>
     (except === 'course' || !course || i.course === course) &&
     (except === 'round' || !round || i.roundGroup === round) &&
-    (except === 'status' || !onlyRescheduled || i.rescheduled);
+    (except === 'status' || !onlyRescheduled || notHeld(i));
   const shown = items.filter((i) => passes(i)).filter((i) => !query || [i.name, i.company, i.round, i.room].some((t) => t.toLowerCase().includes(query)));
   const oneDay = data ? data.from === data.to : period.days === 1;
   const periodWords = period.key === '1' ? 'today' : 'in this period';
@@ -89,7 +89,12 @@ export default function Interviews() {
           />
         }
       >
-        {data?.readAt && <span className="status-pill">From the interview sheet · read {formatUpdated(data.readAt)}</span>}
+        {data?.readAt &&
+          (data.source === 'lms' ? (
+            <span className="status-pill">From the LMS · Today&apos;s Interviews</span>
+          ) : (
+            <span className="status-pill">From the interview sheet · read {formatUpdated(data.readAt)}</span>
+          ))}
         {data?.error && (
           <span className="status-pill warn" title={data.error}>
             <AlertIcon size={13} /> The latest reading failed: showing the one before
@@ -119,9 +124,9 @@ export default function Interviews() {
               </div>
             ))}
             <FilterKpi
-              name="Rescheduled"
+              name="Rescheduled / cancelled"
               icon={<HistoryIcon size={16} />}
-              value={loading ? null : items.filter((i) => i.rescheduled).length}
+              value={loading ? null : items.filter(notHeld).length}
               note="Not counted as interviews"
               active={onlyRescheduled}
               onClick={() => setOnlyRescheduled(!onlyRescheduled)}
@@ -186,7 +191,7 @@ export default function Interviews() {
                     All <span className="chip-count">{formatNumber(items.filter((i) => passes(i, 'status')).length)}</span>
                   </button>
                   <button type="button" className="filter-chip" aria-pressed={onlyRescheduled} onClick={() => setOnlyRescheduled(!onlyRescheduled)}>
-                    Rescheduled <span className="chip-count">{formatNumber(items.filter((i) => passes(i, 'status') && i.rescheduled).length)}</span>
+                    Rescheduled / cancelled <span className="chip-count">{formatNumber(items.filter((i) => passes(i, 'status') && notHeld(i)).length)}</span>
                   </button>
                 </div>
               </div>
@@ -198,7 +203,7 @@ export default function Interviews() {
                 ))}
               </div>
             ) : !shown.length ? (
-              <p className="empty">{filtered ? 'No interview matches.' : `No interviews in the sheet ${periodWords}.`}</p>
+              <p className="empty">{filtered ? 'No interview matches.' : `No interviews ${periodWords}.`}</p>
             ) : (
               <div className="table-wrap">
                 <table className="data-table iv-table">
@@ -225,11 +230,11 @@ export default function Interviews() {
                               </th>
                             </tr>
                           )}
-                          <tr className={item.rescheduled ? 'iv-moved' : undefined}>
-                            <td className="nowrap">{!item.time ? <span className="muted">—</span> : item.rescheduled ? <s>{item.time}</s> : item.time}</td>
+                          <tr className={notHeld(item) ? 'iv-moved' : undefined}>
+                            <td className="nowrap">{!item.time ? <span className="muted">—</span> : notHeld(item) ? <s>{item.time}</s> : item.time}</td>
                             <th scope="row" className="cv-student">
                               {item.name}
-                              {item.rescheduled && <span className="iv-tag">{sentence(item.status)}</span>}
+                              {notHeld(item) && <span className="iv-tag">{sentence(item.status)}</span>}
                             </th>
                             <td className="nowrap">
                               {c ? (

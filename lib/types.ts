@@ -444,10 +444,11 @@ export interface ReviewResponse {
   truncated: boolean;
 }
 
-// ---------- Interviews (GET /api/interviews, from the staff's interview sheet) ----------
+// ---------- Interviews (GET /api/interviews: from the LMS's "Today's Interviews" since 11 Nov 2026, the staff's
+// interview sheet before; source says which) ----------
 
 export interface Interview {
-  id: string; // the sheet's tab and row ("OCTOBER 2026!27")
+  id: string; // the LMS's id; from the sheet: its tab and row ("OCTOBER 2026!27")
   date: string; // IST day
   course: CourseId | null; // from the block's course row (PS, DA, DS, DE)
   name: string; // the student, as written in the sheet
@@ -460,11 +461,15 @@ export interface Interview {
   status: string; // written after the row ("PLACED", "RESCHEDULED FOR TOMORROW"), else ''
   placed: boolean;
   rescheduled: boolean; // moved to another time: listed, but not counted as an interview that day
+  cancelled?: boolean; // called off ("CANCELLED"): listed, but not counted either
 }
+// An interview that doesn't go ahead that day: listed and marked, never counted.
+export const notHeld = (i: Interview) => i.rescheduled || Boolean(i.cancelled);
 export interface InterviewsResponse {
   days: number;
   from: string; // IST days, both included
   to: string;
+  source?: 'lms' | 'sheet'; // where they come from: the LMS database (always current) or the interview sheet
   configured: boolean; // false: the sheet isn't connected on the server
   missing?: string[]; // when not connected: the server's empty settings, by name ("GOOGLE_PRIVATE_KEY")
   startedAt?: string; // when not connected: when the server last started (settings added later need a restart)

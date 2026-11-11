@@ -29,17 +29,19 @@ export const ROLE_LABELS: Record<Role, string> = {
 //   record-outcomes  - in the performance report: give an HR number or email to a student, and record how it went
 //   view-ai-usage    - see how much each person uses IJF AI (admins)
 //   add-jobs         - add a job opening the scraper missed, and remove one they added (admins: anyone's)
+//   manage-interviews - the LMS's "Today's Interviews" (add and change the day's interviews; used by the LMS, not
+//                      this dashboard: kept here so the two lists stay the same)
 // Every role may do everything for now. To restrict a role, take a permission out of its list: the
 // dashboard hides what that role can't do. The server's list (server/src/config/access.js) is the same.
-export type Permission = 'view' | 'edit-hr-details' | 'record-outcomes' | 'view-ai-usage' | 'add-jobs';
+export type Permission = 'view' | 'edit-hr-details' | 'record-outcomes' | 'view-ai-usage' | 'add-jobs' | 'manage-interviews';
 
 export const PERMISSIONS: Record<Role, readonly Permission[]> = {
-  SUPER_ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage', 'add-jobs'],
-  ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage', 'add-jobs'],
-  PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
+  SUPER_ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage', 'add-jobs', 'manage-interviews'],
+  ADMIN: ['view', 'edit-hr-details', 'record-outcomes', 'view-ai-usage', 'add-jobs', 'manage-interviews'],
+  PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs', 'manage-interviews'],
   RESEARCH_TEAM: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'],
   STUDENT_MANAGEMENT: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'], // since 4 Nov 2026, as Placement staff
-  PRE_PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs'], // since 10 Nov 2026, as Placement staff
+  PRE_PLACEMENT_STAFF: ['view', 'edit-hr-details', 'record-outcomes', 'add-jobs', 'manage-interviews'], // since 10 Nov 2026, as Placement staff
 };
 
 // The role written in a Clerk user's public metadata, as typed there (to show it on "No access").

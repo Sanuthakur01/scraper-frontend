@@ -7,7 +7,7 @@ import { useApi } from '@/lib/api';
 import { COURSE_COLORS, courseInitials, formatDay, formatNumber, formatTime, istDayOf, sumCounts } from '@/lib/format';
 import { countsOf } from '@/lib/performance';
 import { isCvShared } from '@/lib/review';
-import type { ApiState, IncomingCallsResponse, InterviewsResponse, Meta, PerformanceResponse, ReviewResponse, Summary } from '@/lib/types';
+import { notHeld, type ApiState, type IncomingCallsResponse, type InterviewsResponse, type Meta, type PerformanceResponse, type ReviewResponse, type Summary } from '@/lib/types';
 import { ArrowRightIcon, BriefcaseIcon, CalendarIcon, MailIcon, PhoneIcon, PhoneIncomingIcon, SendIcon, UsersIcon } from './Icons';
 import { setupHint } from './Interviews';
 import { Freshness, PageError, PageHeader, PageSkeleton } from './PageParts';
@@ -104,11 +104,11 @@ export default function Home() {
   const cv = review.data ? cvRows.length : null;
   const students = new Set(cvRows.map((row) => row.student.toLowerCase()).filter(Boolean)).size;
   const companies = new Set(cvRows.map((row) => (row.job.company ?? '').toLowerCase()).filter(Boolean)).size;
-  // Today's interviews (from the staff's sheet, by time, "Anytime" last): the next few still to come; when none
-  // is left, the day's last few.
+  // Today's interviews (from the LMS's "Today's Interviews", by time, "Anytime" last): the next few still to come;
+  // when none is left, the day's last few.
   const iv = interviews.data;
-  // A rescheduled interview isn't counted or listed (the Interviews page lists it, marked).
-  const ivItems = (iv?.items ?? []).filter((i) => !i.rescheduled);
+  // A rescheduled or cancelled interview isn't counted or listed (the Interviews page lists it, marked).
+  const ivItems = (iv?.items ?? []).filter((i) => !notHeld(i));
   const ivRescheduled = (iv?.items ?? []).length - ivItems.length;
   const minutesNow = hour * 60 + new Date(now.getTime() + 330 * 60_000).getUTCMinutes();
   const comingUp = ivItems.filter((i) => i.minutes == null || i.minutes >= minutesNow);
@@ -271,10 +271,10 @@ export default function Home() {
               <>
                 <span className="home-tile-note">
                   {ivItems.length
-                    ? `${plural(ivCompanies, 'company', 'companies')}${placed ? ` · ${formatNumber(placed)} placed` : ''}${ivRescheduled ? ` · ${formatNumber(ivRescheduled)} rescheduled` : ''}`
+                    ? `${plural(ivCompanies, 'company', 'companies')}${placed ? ` · ${formatNumber(placed)} placed` : ''}${ivRescheduled ? ` · ${formatNumber(ivRescheduled)} rescheduled or cancelled` : ''}`
                     : ivRescheduled
-                      ? `No interviews today · ${formatNumber(ivRescheduled)} rescheduled`
-                      : 'No interviews in the sheet for today'}
+                      ? `No interviews today · ${formatNumber(ivRescheduled)} rescheduled or cancelled`
+                      : 'No interviews entered for today yet'}
                   {iv.error && ' · showing the last reading of the sheet'}
                 </span>
                 {ivItems.length ? (
@@ -298,7 +298,7 @@ export default function Home() {
       </section>
 
       <p className="page-footnote">
-        Contacts, CVs and incoming calls count today&apos;s work (IST). Job postings count the latest collection. Interviews come from the staff&apos;s interview sheet.
+        Contacts, CVs and incoming calls count today&apos;s work (IST). Job postings count the latest collection. Interviews come from {iv?.source === 'sheet' ? 'the staff’s interview sheet' : 'the LMS (Today’s Interviews)'}.
       </p>
     </main>
   );
