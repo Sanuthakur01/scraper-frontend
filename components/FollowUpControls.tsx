@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { REMARKS, remarkName, type FollowUpOp } from '@/lib/performance';
-import type { ContactOutcome, PerformanceRow, RemarkStatus } from '@/lib/types';
+import { formatDateTime, formatUpdated } from '@/lib/format';
+import { REMARKS, remarkHistory, remarkName, remarkWords, type FollowUpOp } from '@/lib/performance';
+import type { ContactOutcome, PerformanceRow, RemarkEntry, RemarkStatus } from '@/lib/types';
 import type { SaveState } from '@/lib/useFollowUps';
 import { AlertIcon, CheckIcon, CloseIcon } from './Icons';
 
 // The follow-up of one HR number or email: the students it was given to (a number can go to several), and how
-// each one's call went, edited in place: each choice saves at once, with no Save button. Used in the
-// Performance report (its drill-down and "All contacts") and on the Assign numbers page.
+// each one's call went (remarks added one after another, the earlier ones kept), edited in place: each choice
+// saves at once, with no Save button. Used in the Performance report (its drill-down and "All contacts") and on
+// the Assign numbers page.
 
 const clean = (text: string) => text.replace(/\s+/g, ' ').trim();
 
@@ -71,71 +73,107 @@ function StudentAdd({
   );
 }
 
-// How a call went: one of the remarks, saved as soon as it is picked. "Others" opens a box for their own
-// words, saved on Enter or on leaving it (empty: back to the remark before).
+// A call's remarks, oldest first, each with when it was added (and by whom, on hover): they all stay, and the
+// latest is what counts. A remark just added shows "just now" until the server answers.
+export function RemarkLog({ field, history, label }: { field: 'phone' | 'email'; history: RemarkEntry[]; label: string }) {
+  if (!history.length) return null;
+  return (
+    <ol className="remark-log" aria-label={`Remarks on ${label}, oldest first`}>
+      {history.map((r, i) => {
+        const words = remarkWords(r, field);
+        const who = r.by ? r.by.name?.trim() || r.by.email : '';
+        return (
+          <li key={i} className={i === history.length - 1 ? 'is-latest' : undefined} title={[words, who && `by ${who}`, r.at && formatDateTime(r.at)].filter(Boolean).join(' · ')}>
+            <span className={`remark-chip tone-${REMARKS.find((x) => x.id === r.status)?.tone ?? 'neutral'}`}>{words}</span>
+            <span className="remark-when">{r.at ? formatUpdated(r.at) : 'just now'}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// How a call went: its remarks so far (RemarkLog), and a box to add another (RemarkAdd).
 export function RemarkField({
   field,
-  status,
-  note,
+  history,
   label,
   onSave,
 }: {
   field: 'phone' | 'email';
-  status: RemarkStatus | '';
-  note: string;
+  history: RemarkEntry[];
   label: string;
-  onSave: (patch: { status: RemarkStatus | ''; note?: string }) => void;
+  onSave: (patch: { status: RemarkStatus; note?: string }) => void;
 }) {
-  const [writing, setWriting] = useState(false); // "Others" picked, words not saved yet
-  const [text, setText] = useState(note);
+  return (
+    <span className="remark-field">
+      <RemarkLog field={field} history={history} label={label} />
+      <RemarkAdd field={field} hasRemarks={history.length > 0} label={label} onSave={onSave} />
+    </span>
+  );
+}
+
+// A box to add a remark to a call, saved as soon as it is picked: it never replaces the ones before. "Others"
+// opens a box for their own words, added on Enter or on leaving it (empty: nothing added). Also on the Review
+// board's list (which shows the remarks itself).
+export function RemarkAdd({
+  field,
+  hasRemarks,
+  label,
+  disabled = false,
+  onSave,
+}: {
+  field: 'phone' | 'email';
+  hasRemarks: boolean; // the call has remarks already
+  label: string;
+  disabled?: boolean; // e.g. while the last one is saving
+  onSave: (patch: { status: RemarkStatus; note?: string }) => void;
+}) {
+  const [writing, setWriting] = useState(false); // "Others" picked, words not added yet
+  const [text, setText] = useState('');
   const noteBox = useRef<HTMLInputElement>(null);
-  useEffect(() => setText(note), [note]);
   useEffect(() => {
     if (writing) noteBox.current?.focus();
   }, [writing]);
 
-  const shown = writing ? 'other' : status;
-  const tone = REMARKS.find((r) => r.id === shown)?.tone ?? 'none';
   const commitNote = (raw: string) => {
     const words = clean(raw);
     setWriting(false);
-    if (!words) {
-      setText(note); // nothing typed: the remark stays as it was
-      return;
-    }
-    if (status !== 'other' || words !== note) onSave({ status: 'other', note: words });
+    setText('');
+    if (words) onSave({ status: 'other', note: words });
   };
 
   return (
-    <span className="remark-field">
+    <>
       <select
-        className={`remark-select tone-${tone}`}
-        value={shown}
-        aria-label={`Remark for ${label}`}
+        className={`remark-select ${writing ? 'tone-accent' : 'tone-none'}`}
+        value={writing ? 'other' : ''}
+        disabled={disabled}
+        aria-label={hasRemarks ? `Add another remark for ${label} (the ones before stay)` : `Add a remark for ${label}`}
         onChange={(e) => {
           const next = e.target.value as RemarkStatus | '';
           if (next === 'other') {
-            setText(status === 'other' ? note : '');
+            setText('');
             setWriting(true);
             return;
           }
           setWriting(false);
-          onSave({ status: next });
+          if (next) onSave({ status: next });
         }}
       >
-        <option value="">{status ? 'No remark' : 'Add remark…'}</option>
+        <option value="">{hasRemarks ? '+ Add remark…' : 'Add remark…'}</option>
         {REMARKS.map((r) => (
           <option key={r.id} value={r.id}>
-            {r.id === 'other' ? (shown === 'other' ? 'Others' : 'Others…') : remarkName(r.id, field)}
+            {r.id === 'other' ? (writing ? 'Others' : 'Others…') : remarkName(r.id, field)}
           </option>
         ))}
       </select>
-      {(writing || status === 'other') && (
+      {writing && (
         <input
           ref={noteBox}
           className="followup-input remark-note"
           value={text}
-          placeholder="What happened? Enter to save"
+          placeholder="What happened? Enter to add"
           aria-label={`Others: what happened with ${label}`}
           maxLength={300}
           title={text}
@@ -146,13 +184,13 @@ export function RemarkField({
               e.preventDefault();
               e.currentTarget.blur();
             } else if (e.key === 'Escape') {
-              setText(note);
+              setText('');
               setWriting(false);
             }
           }}
         />
       )}
-    </span>
+    </>
   );
 }
 
@@ -179,12 +217,16 @@ export function SaveMark({ save }: { save?: SaveState }) {
   );
 }
 
-const remarkText = (o: ContactOutcome, field: 'phone' | 'email') =>
-  o.status ? (o.status === 'other' ? `Others: ${o.note}` : remarkName(o.status, field)) : '';
+// A call's remarks in words, oldest first ("DNP, Busy").
+const remarksOf = (o: ContactOutcome, field: 'phone' | 'email') =>
+  remarkHistory(o)
+    .map((r) => remarkWords(r, field))
+    .join(', ');
 
-// One number's follow-ups in two columns, student and remark: each student it was given to, with the remark on
-// their call and a × to take it back; then a box to give it to another student too. Before anyone has it: the
-// box, and the number's own remark. readOnly (a role that can't change them): what they say.
+// One number's follow-ups in two columns, student and remarks: each student it was given to, with the remarks on
+// their call (and a box to add another) and a × to take it back; then a box to give it to another student too.
+// Before anyone has it: the box, and the number's own remarks. readOnly (a role that can't change them): what
+// they say.
 export function FollowUps({
   row,
   listId,
@@ -213,7 +255,13 @@ export function FollowUps({
           outcomes.map((o) => (
             <div className="fu-row" key={o.student.toLowerCase() || '-'}>
               <span className="fu-student">{o.student ? <strong className="fu-text">{o.student}</strong> : <span className="muted">No student</span>}</span>
-              <span className="fu-remark">{remarkText(o, row.field) || <span className="muted">—</span>}</span>
+              <span className="fu-remark">
+                {remarkHistory(o).length ? (
+                  <RemarkLog field={row.field} history={remarkHistory(o)} label={o.student ? `${row.value}, ${o.student}'s call` : row.value} />
+                ) : (
+                  <span className="muted">—</span>
+                )}
+              </span>
             </div>
           ))
         ) : (
@@ -232,15 +280,14 @@ export function FollowUps({
     onChange({ add: name });
   };
   const takeBack = (o: ContactOutcome) => {
-    const said = remarkText(o, row.field);
-    if (said && !window.confirm(`Take ${row.value} back from ${o.student}? The remark on their call ("${said}") goes with it.`)) return;
+    const said = remarksOf(o, row.field);
+    if (said && !window.confirm(`Take ${row.value} back from ${o.student}? The remarks on their call (${said}) go with it.`)) return;
     onChange({ remove: o.student });
   };
   const remark = (student: string, o?: ContactOutcome) => (
     <RemarkField
       field={row.field}
-      status={o?.status ?? ''}
-      note={o?.note ?? ''}
+      history={o ? remarkHistory(o) : []}
       label={student ? `${row.value}, ${student}'s call` : row.value}
       onSave={(patch) => onChange({ student, ...patch })}
     />

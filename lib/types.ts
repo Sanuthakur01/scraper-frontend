@@ -386,12 +386,20 @@ export interface PerformanceRow {
 }
 
 // The follow-up of one number or email with one student (PUT /api/outcomes): the student it was given to, and
-// how their call went. A number can go to several students, each with a remark of their own.
+// how their call went. A number can go to several students, each with remarks of their own: a new remark is
+// added to the ones before (they stay); the latest counts.
 export type RemarkStatus = 'dnp' | 'busy' | 'switched-off' | 'wrong' | 'not-person' | 'cv-shared' | 'no-openings' | 'other';
+export interface RemarkEntry {
+  status: RemarkStatus;
+  note: string; // the words of an "Others" remark
+  at: string | null; // null: not known (shown at once, before the server answered)
+  by: { email: string; name?: string } | null;
+}
 export interface ContactOutcome {
   student: string; // '' = a remark made before anyone was given the number
-  status: RemarkStatus | '';
+  status: RemarkStatus | ''; // the latest remark
   note: string; // the words of an "Others" remark
+  history?: RemarkEntry[]; // every remark, oldest first (absent from a server older than 23 Nov 2026)
   updatedAt: string | null;
   updatedBy: { email: string; name?: string } | null;
 }
@@ -433,7 +441,8 @@ export interface ReviewRow {
   // The feedback on the student's call recorded in the period (the latest); hours: since it was given to them
   // (null: not given before it).
   feedback: { at: string; by: ReviewPerson; label: string; status: RemarkStatus; note: string; hours: number | null } | null;
-  now: { student: string; status: RemarkStatus | ''; note: string } | null; // the student's follow-up today (null: none)
+  // The student's follow-up today (null: none): the latest remark, and all of them, oldest first.
+  now: { student: string; status: RemarkStatus | ''; note: string; history?: RemarkEntry[] } | null;
 }
 export interface ReviewResponse {
   days: number;

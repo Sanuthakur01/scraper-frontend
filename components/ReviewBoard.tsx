@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { apiUrl, useApi } from '@/lib/api';
-import { COURSE_COLORS, courseInitials, formatDate, formatDateTime, formatNumber, istDayOf, periodFrom, periodParams, periodQuery, shareText, type Period } from '@/lib/format';
+import { apiUrl, ApiError, sendJson, useApi } from '@/lib/api';
+import { COURSE_COLORS, courseInitials, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, periodFrom, periodParams, periodQuery, shareText, type Period } from '@/lib/format';
 import { ACTIVITY_PERIODS, csvCell, istStamp, REMARKS, remarkName } from '@/lib/performance';
 import {
   byCourse,
@@ -21,14 +21,18 @@ import {
   perDay,
   studentOf,
   summaryOf,
+  withRemarkAdded,
   type RemarkFilter,
   type ReviewFilters,
   type ReviewGroup,
 } from '@/lib/review';
 import { signInHeader } from '@/lib/session';
-import type { Course, Job, JobsResponse, Meta, RemarkStatus, ReviewResponse, ReviewRow } from '@/lib/types';
+import type { ContactOutcome, Course, Job, JobsResponse, Meta, RemarkStatus, ReviewResponse, ReviewRow } from '@/lib/types';
+import type { SaveState } from '@/lib/useFollowUps';
+import { useAccess } from './AuthGate';
 import Avatar from './Avatar';
 import { AlertIcon, BuildingIcon, CheckIcon, ClockIcon, DownloadIcon, MailIcon, MessageIcon, PhoneIcon, SearchIcon, SendIcon, TrendIcon, UsersIcon } from './Icons';
+import { RemarkAdd, SaveMark } from './FollowUpControls';
 import JobDetailsModal from './JobDetailsModal';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError } from './PageParts';
 import PeriodTabs from './PeriodTabs';
@@ -73,7 +77,7 @@ const foundWords = (row: ReviewRow) =>
 function reviewCsv(rows: ReviewRow[], courseName: (id: string) => string) {
   const header = [
     'Given out (IST)', 'Given by', 'Student', 'Detail', 'Number or email', 'Company', 'Job', 'Course', 'Filtered / Non-filtered',
-    'Found by', 'Added (IST)', 'Feedback', 'Feedback by', 'Feedback at (IST)', 'Hours to feedback', 'Remark now',
+    'Found by', 'Added (IST)', 'Feedback', 'Feedback by', 'Feedback at (IST)', 'Hours to feedback', 'Remark now', 'All remarks (oldest first)',
   ];
   const lines = rows.map((r) =>
     [
@@ -93,6 +97,7 @@ function reviewCsv(rows: ReviewRow[], courseName: (id: string) => string) {
       r.feedback ? istStamp(r.feedback.at) : '',
       r.feedback?.hours != null ? r.feedback.hours.toFixed(1) : '',
       feedbackWords(r, r.now?.status, r.now?.note),
+      (r.now?.history ?? []).map((h) => feedbackWords(r, h.status, h.note)).join(' → '),
     ]
       .map(csvCell)
       .join(','),
@@ -108,7 +113,9 @@ const REMARK_FILTERS: { value: RemarkFilter; label: string }[] = [
   { value: 'feedback', label: 'With feedback' },
   { value: 'awaiting', label: 'Awaiting feedback' },
   { value: 'wrong-any', label: 'Wrong contacts' },
+  { value: 'not-reached', label: 'Not reached (DNP, Busy, Switched off)' },
   { value: 'reached', label: 'Reached the right person' },
+  { value: 'through', label: 'Got through (right or wrong person)' },
   ...REMARKS.map((r) => ({ value: r.id as RemarkFilter, label: r.label })),
 ];
 
@@ -125,10 +132,24 @@ export default function ReviewBoard() {
   const [opening, setOpening] = useState<{ id: string; problem: string } | null>(null);
   const list = useRef<HTMLElement>(null);
 
+  const mayRecord = useAccess()?.can('record-outcomes') ?? false;
+  // Remarks added here since the board loaded: the rows they changed (until it loads again), each save's state, and
+  // the rows that stay in the list until a filter changes (so a call doesn't vanish from "DNP" the moment it gets
+  // "CV shared").
+  const [edits, setEdits] = useState<{ base: ReviewResponse | null; rows: Record<string, ReviewRow> }>({ base: null, rows: {} });
+  const [saves, setSaves] = useState<Record<string, SaveState | undefined>>({});
+  const [stay, setStay] = useState<{ filters: ReviewFilters | null; ids: Set<string> }>({ filters: null, ids: new Set() });
+
   const data = review.data;
-  const rows = data?.rows ?? EMPTY;
+  const rows = useMemo(() => {
+    const all = data?.rows ?? EMPTY;
+    return edits.base === data ? all.map((row) => edits.rows[row.id] ?? row) : all;
+  }, [data, edits]);
   const summary = useMemo(() => summaryOf(rows), [rows]);
-  const filtered = useMemo(() => rows.filter((row) => matchesReview(row, filters)), [rows, filters]);
+  const filtered = useMemo(
+    () => rows.filter((row) => matchesReview(row, filters) || (stay.filters === filters && stay.ids.has(row.id))),
+    [rows, filters, stay],
+  );
 
   // A new period: the list from its top again.
   const periodKey = `${period.key}${period.from ?? ''}${period.to ?? ''}`;
@@ -169,6 +190,31 @@ export default function ReviewBoard() {
       setDetail(job);
     } catch {
       setOpening({ id: row.id, problem: 'Could not reach the server. Check your connection and try again.' });
+    }
+  };
+
+  // A remark added to a student's call: saved (added after the ones before, never replacing them), then the row shows
+  // what the server answered: every remark, and the feedback when the remark falls in the period.
+  const addRemark = async (row: ReviewRow, patch: { status: RemarkStatus; note?: string }) => {
+    if (!data) return;
+    const base = data;
+    setStay((st) => ({ filters, ids: new Set([...(st.filters === filters ? st.ids : []), row.id]) }));
+    setSaves((sv) => ({ ...sv, [row.id]: { state: 'saving' } }));
+    try {
+      const body = { job: row.job.id, field: row.field, value: row.value, student: row.student, status: patch.status, note: patch.status === 'other' ? (patch.note ?? '') : '' };
+      const answer = await sendJson<{ outcomes: ContactOutcome[] }>('outcomes', 'PUT', body);
+      const mine = answer.outcomes.find((o) => o.student.toLowerCase() === row.student.toLowerCase());
+      if (mine) {
+        const now = { student: mine.student, status: mine.status, note: mine.note, history: mine.history };
+        const latest = mine.history?.at(-1);
+        const inPeriod = Boolean(latest?.at && istDayOf(latest.at) <= base.to);
+        const changed = withRemarkAdded(row, now, feedbackWords(row, mine.status, mine.note), inPeriod);
+        setEdits((e) => ({ base, rows: { ...(e.base === base ? e.rows : {}), [row.id]: changed } }));
+      }
+      setSaves((sv) => ({ ...sv, [row.id]: { state: 'saved' } }));
+      setTimeout(() => setSaves((sv) => (sv[row.id]?.state === 'saved' ? { ...sv, [row.id]: undefined } : sv)), 2500);
+    } catch (err) {
+      setSaves((sv) => ({ ...sv, [row.id]: { state: 'error', message: `Not saved: ${err instanceof ApiError || err instanceof Error ? err.message : 'try again'}` } }));
     }
   };
 
@@ -315,8 +361,9 @@ export default function ReviewBoard() {
               groups={groupRows(rows, byFinder)}
               loading={!data}
               empty={`No numbers given out or called ${words}.`}
-              selected={filters.finder}
-              onSelect={(key) => show({ finder: key })}
+              filterKey="finder"
+              filters={filters}
+              onShow={show}
               who={(g) =>
                 g.key === FOUND_POST ? (
                   <span className="review-who-icon" aria-hidden="true">
@@ -342,8 +389,9 @@ export default function ReviewBoard() {
               groups={groupRows(rows, byStudent)}
               loading={!data}
               empty={`No numbers given to students ${words}.`}
-              selected={filters.student}
-              onSelect={(key) => show({ student: key })}
+              filterKey="student"
+              filters={filters}
+              onShow={show}
               columns={['given', 'feedback', 'cvShared', 'notReached', 'awaiting']}
               limit={8}
             />
@@ -354,8 +402,9 @@ export default function ReviewBoard() {
               groups={groupRows(rows, byCourse).map((g) => ({ ...g, label: courseName(g.key) }))}
               loading={!data}
               empty={`No numbers given out or called ${words}.`}
-              selected={filters.course}
-              onSelect={(key) => show({ course: key })}
+              filterKey="course"
+              filters={filters}
+              onShow={show}
               who={(g) => (
                 <span className="kpi-badge review-course-badge" style={{ '--course': COURSE_COLORS[g.key as Course['id']] } as CSSProperties} aria-hidden="true">
                   {courseInitials(g.label)}
@@ -373,8 +422,9 @@ export default function ReviewBoard() {
               groups={groupRows(rows, byGiver)}
               loading={!data}
               empty={`No numbers given out ${words}.`}
-              selected={filters.giver}
-              onSelect={(key) => show({ giver: key })}
+              filterKey="giver"
+              filters={filters}
+              onShow={show}
               who={(g) => <Avatar name={g.label} email={g.email ?? g.key} className="activity-avatar review-avatar" />}
               columns={['given', 'awaiting', 'cvShared', 'wrong']}
             />
@@ -413,6 +463,16 @@ export default function ReviewBoard() {
                 />
               </label>
               <FilterSelect label="Show" value={filters.remark} options={REMARK_FILTERS} onChange={(remark) => setFilters((f) => ({ ...f, remark: remark as RemarkFilter }))} />
+              <FilterSelect
+                label="Phones or emails"
+                value={filters.field}
+                options={[
+                  { value: '', label: 'Phones and emails' },
+                  { value: 'phone', label: 'Phone numbers' },
+                  { value: 'email', label: 'Emails' },
+                ]}
+                onChange={(field) => setFilters((f) => ({ ...f, field: field as ReviewFilters['field'] }))}
+              />
               <FilterSelect
                 label="Student"
                 value={filters.student}
@@ -467,7 +527,16 @@ export default function ReviewBoard() {
                     </thead>
                     <tbody>
                       {filtered.slice(0, shown).map((row) => (
-                        <ReviewLine key={row.id} row={row} courseName={courseName} opening={opening?.id === row.id ? opening : null} onOpen={() => openJob(row)} />
+                        <ReviewLine
+                          key={row.id}
+                          row={row}
+                          courseName={courseName}
+                          opening={opening?.id === row.id ? opening : null}
+                          onOpen={() => openJob(row)}
+                          // A student's call, while they still have the number: a remark can be added to it.
+                          onRemark={mayRecord && row.student && row.now ? (patch) => addRemark(row, patch) : undefined}
+                          save={saves[row.id]}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -598,22 +667,36 @@ function FeedbackCard({
   );
 }
 
-// One column of a group table: its heading and the number from a group's counts.
+// One column of a group table: its heading, the number from a group's counts, and the rows that number counts
+// (filter: clicking it shows them in the list), in words for screen readers.
+type Column = { head: string; title: string; filter: RemarkFilter; count: (g: ReviewGroup) => number; value: (g: ReviewGroup) => string; words: (g: ReviewGroup) => string };
 const COLUMNS = {
-  given: { head: 'Given', title: 'Given to students in the period', value: (g: ReviewGroup) => formatNumber(g.given) },
-  feedback: { head: 'Feedback', title: 'Calls with feedback recorded in the period', value: (g: ReviewGroup) => formatNumber(g.feedback) },
-  cvShared: { head: 'CV shared', title: 'Calls that ended with a CV shared', value: (g: ReviewGroup) => formatNumber(g.cvShared) },
-  reached: { head: 'Reached', title: 'Reached the right person: CV shared or No openings', value: (g: ReviewGroup) => formatNumber(g.reached) },
-  wrong: { head: 'Wrong', title: 'Wrong number or email, or not the correct person', value: (g: ReviewGroup) => formatNumber(g.wrong) },
-  notReached: { head: 'Not reached', title: 'DNP, Busy or Switched off: call again', value: (g: ReviewGroup) => formatNumber(g.notReached) },
-  awaiting: { head: 'Awaiting', title: 'Given out in the period, no feedback yet', value: (g: ReviewGroup) => formatNumber(g.awaiting) },
+  given: {
+    head: 'Given',
+    title: 'Numbers and emails given to students in the period (phones and emails below)',
+    filter: 'given',
+    count: (g) => g.given,
+    value: (g) => formatNumber(g.given),
+    words: (g) => `${plural(g.given, 'number or email', 'numbers and emails')} given out (${plural(g.givenPhones, 'phone number')}, ${plural(g.givenEmails, 'email')})`,
+  },
+  feedback: { head: 'Feedback', title: 'Calls with feedback recorded in the period', filter: 'feedback', count: (g) => g.feedback, value: (g) => formatNumber(g.feedback), words: (g) => `${plural(g.feedback, 'call')} with feedback` },
+  cvShared: { head: 'CV shared', title: 'Calls that ended with a CV shared', filter: 'cv-shared', count: (g) => g.cvShared, value: (g) => formatNumber(g.cvShared), words: (g) => `${plural(g.cvShared, 'call')} with a CV shared` },
+  reached: { head: 'Reached', title: 'Reached the right person: CV shared or No openings', filter: 'reached', count: (g) => g.reached, value: (g) => formatNumber(g.reached), words: (g) => `${plural(g.reached, 'call')} that reached the right person` },
+  wrong: { head: 'Wrong', title: 'Wrong number or email, or not the correct person', filter: 'wrong-any', count: (g) => g.wrong, value: (g) => formatNumber(g.wrong), words: (g) => plural(g.wrong, 'wrong contact') },
+  notReached: { head: 'Not reached', title: 'DNP, Busy or Switched off: call again', filter: 'not-reached', count: (g) => g.notReached, value: (g) => formatNumber(g.notReached), words: (g) => `${plural(g.notReached, 'call')} not reached (DNP, Busy or Switched off)` },
+  awaiting: { head: 'Awaiting', title: 'Given out in the period, no feedback yet', filter: 'awaiting', count: (g) => g.awaiting, value: (g) => formatNumber(g.awaiting), words: (g) => `${plural(g.awaiting, 'number')} awaiting feedback` },
   accuracy: {
     head: 'Right person',
     title: 'Of the calls that got through, the share that reached the right person',
-    value: (g: ReviewGroup) => (g.accuracy == null ? '—' : shareText(g.reached, g.reached + g.wrong)),
+    filter: 'through',
+    count: (g) => g.reached + g.wrong,
+    value: (g) => (g.accuracy == null ? '—' : shareText(g.reached, g.reached + g.wrong)),
+    words: (g) => `${shareText(g.reached, g.reached + g.wrong)} of the ${plural(g.reached + g.wrong, 'call')} that got through reached the right person`,
   },
-} as const;
+} satisfies Record<string, Column>;
 
+// A table of groups (students, people, courses): each name shows all its rows in the list below, and each number
+// exactly the rows it counts (Given also by phones and by emails). filterKey: the list filter a group sets.
 function GroupTable({
   title,
   description,
@@ -621,8 +704,9 @@ function GroupTable({
   groups,
   loading,
   empty,
-  selected,
-  onSelect,
+  filterKey,
+  filters,
+  onShow,
   who,
   columns,
   limit,
@@ -633,14 +717,33 @@ function GroupTable({
   groups: ReviewGroup[];
   loading: boolean;
   empty: string;
-  selected: string;
-  onSelect: (key: string) => void;
+  filterKey: 'student' | 'course' | 'finder' | 'giver';
+  filters: ReviewFilters;
+  onShow: (patch: Partial<ReviewFilters>) => void;
   who?: (group: ReviewGroup) => ReactNode;
   columns: (keyof typeof COLUMNS)[];
   limit?: number; // show the first this many, and a button for the rest
 }) {
   const [all, setAll] = useState(false);
   const shown = limit && !all ? groups.slice(0, limit) : groups;
+  // The list shows exactly this: the button for it is pressed.
+  const showing = (key: string, remark: RemarkFilter, field: ReviewFilters['field'] = '') =>
+    filters[filterKey] === key && filters.remark === remark && filters.field === field && !filters.q;
+  const count = (g: ReviewGroup, label: ReactNode, n: number, remark: RemarkFilter, field: ReviewFilters['field'], words: string, className = 'review-cell') =>
+    n ? (
+      <button
+        type="button"
+        className={className}
+        aria-pressed={showing(g.key, remark, field)}
+        onClick={() => onShow({ [filterKey]: g.key, remark, field })}
+        aria-label={`${g.label}: ${words}. Show them in the list`}
+        title="Show them in the list"
+      >
+        {label}
+      </button>
+    ) : (
+      <span className={`${className} is-zero`}>{label}</span>
+    );
   return (
     <section className="card review-group">
       <CardHeader level={3} icon={icon} title={title} description={description} />
@@ -667,18 +770,27 @@ function GroupTable({
             </thead>
             <tbody>
               {shown.map((g) => (
-                <tr key={g.key || 'none'} className={selected === g.key ? 'is-selected' : ''}>
+                <tr key={g.key || 'none'} className={filters[filterKey] === g.key ? 'is-selected' : ''}>
                   <th scope="row">
-                    <button type="button" className="review-who" onClick={() => onSelect(g.key)} aria-pressed={selected === g.key} title="Show these in the list">
+                    <button type="button" className="review-who" onClick={() => onShow({ [filterKey]: g.key })} aria-pressed={showing(g.key, '')} title="Show all of these in the list">
                       {who?.(g)}
                       <span>{g.label}</span>
                     </button>
                   </th>
-                  {columns.map((c) => (
-                    <td key={c} className={c === 'accuracy' ? 'strong' : ''}>
-                      {COLUMNS[c].value(g)}
-                    </td>
-                  ))}
+                  {columns.map((c) => {
+                    const col = COLUMNS[c];
+                    return (
+                      <td key={c} className={c === 'accuracy' ? 'strong' : ''}>
+                        {count(g, col.value(g), col.count(g), col.filter, '', col.words(g))}
+                        {c === 'given' && g.given > 0 && (
+                          <span className="review-split">
+                            {count(g, <><PhoneIcon size={11} /> {formatNumber(g.givenPhones)}</>, g.givenPhones, 'given', 'phone', `${plural(g.givenPhones, 'phone number')} given out`, 'review-split-link is-phone')}
+                            {count(g, <><MailIcon size={11} /> {formatNumber(g.givenEmails)}</>, g.givenEmails, 'given', 'email', `${plural(g.givenEmails, 'email')} given out`, 'review-split-link is-email')}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -793,11 +905,27 @@ function DaysCard({ rows, from, to }: { rows: ReviewRow[]; from: string; to: str
   );
 }
 
-// One number or email: the job (opens its details), who found it, who gave it to whom, and the feedback.
-function ReviewLine({ row, courseName, opening, onOpen }: { row: ReviewRow; courseName: (id: string) => string; opening: { problem: string } | null; onOpen: () => void }) {
+// One number or email: the job (opens its details), who found it, who gave it to whom, and the feedback, with a
+// box to add another remark to the call (onRemark: when it can have one; the ones before stay).
+function ReviewLine({
+  row,
+  courseName,
+  opening,
+  onOpen,
+  onRemark,
+  save,
+}: {
+  row: ReviewRow;
+  courseName: (id: string) => string;
+  opening: { problem: string } | null;
+  onOpen: () => void;
+  onRemark?: (patch: { status: RemarkStatus; note?: string }) => void;
+  save?: SaveState;
+}) {
   const remark = row.feedback ? feedbackWords(row, row.feedback.status, row.feedback.note) : '';
   const nowRemark = feedbackWords(row, row.now?.status, row.now?.note);
   const awaiting = row.given?.inPeriod && !row.now?.status;
+  const history = row.now?.history ?? []; // every remark on the call, oldest first
   return (
     <tr>
       <td className="review-contact">
@@ -873,6 +1001,24 @@ function ReviewLine({ row, courseName, opening, onOpen }: { row: ReviewRow; cour
           <span className="muted">Earlier: {nowRemark}</span>
         ) : (
           <span className="muted">—</span>
+        )}
+        {history.length > 1 && (
+          <span className="review-sub review-remarks">
+            All {history.length} remarks:{' '}
+            {history.map((h) => `${feedbackWords(row, h.status, h.note)}${h.at ? ` (${formatUpdated(h.at)})` : ''}`).join(' → ')}
+          </span>
+        )}
+        {onRemark && (
+          <span className="remark-field review-add-remark">
+            <RemarkAdd
+              field={row.field}
+              hasRemarks={history.length > 0 || Boolean(row.now?.status)}
+              label={`${row.value}, ${row.student}'s call`}
+              disabled={save?.state === 'saving'}
+              onSave={onRemark}
+            />
+            <SaveMark save={save} />
+          </span>
         )}
       </td>
     </tr>

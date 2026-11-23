@@ -4255,6 +4255,48 @@ button.rank-row:disabled {
   width: 140px;
 }
 
+/* A call's remarks, oldest first, each with when it was added; the box to add another comes after them (a new
+   remark never replaces the ones before; the latest counts) */
+.remark-log {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remark-log li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A long "Others" note wraps (it is what the caller wrote: never cut short) */
+.remark-log .remark-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: auto;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 11px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.remark-when {
+  flex: none;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .save-mark {
   display: inline-flex;
   align-items: center;
@@ -9082,6 +9124,93 @@ button.review-bar:disabled {
 
 .review-more {
   margin-top: var(--space-3);
+}
+
+/* Each count opens exactly what it counts in the list below: a number that reads as a link (a pill, pressed while
+   the list shows it); 0 opens nothing */
+.review-cell,
+.review-split-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted color-mix(in srgb, var(--link) 45%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.review-cell:hover,
+.review-split-link:hover,
+.review-cell[aria-pressed='true'],
+.review-split-link[aria-pressed='true'] {
+  background: var(--accent-soft);
+  text-decoration-style: solid;
+}
+
+.review-cell:focus-visible,
+.review-split-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.review-cell.is-zero,
+.review-split-link.is-zero {
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.review-cell.is-zero:hover,
+.review-split-link.is-zero:hover {
+  background: none;
+}
+
+/* Under "Given": how many were phone numbers and how many emails, each opening them */
+.review-split {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+.review-split-link {
+  margin: -2px -4px;
+  padding: 2px 4px;
+  font-weight: 600;
+}
+
+/* Every remark on a call, oldest first, in the list */
+.review-remarks {
+  display: block;
+  line-height: 1.45;
+}
+
+/* The box to add another remark to the call, under its feedback */
+.review-add-remark {
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  /* Phones: phones over emails (a narrow column), and a name long enough to read (the counts scroll sideways) */
+  .review-split {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .review-group-table tbody th {
+    min-width: 112px;
+  }
 }
 
 .review-group-table tr.is-selected > * {

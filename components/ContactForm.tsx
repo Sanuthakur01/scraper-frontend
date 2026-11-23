@@ -23,6 +23,7 @@ export const FOUND_BY: { id: string; label: string }[] = [
   { id: 'linkedin', label: 'LinkedIn' },
   { id: 'naukri', label: 'Naukri' },
   { id: 'indeed', label: 'Indeed' },
+  { id: 'apify', label: 'Apify' }, // company office/HR contact found from a Google Maps listing via Apify
   { id: 'incoming-call', label: 'Incoming call' }, // the HR called a student (logged on the Incoming calls form)
 ];
 export const foundByLabel = (id?: string) => FOUND_BY.find((o) => o.id === id)?.label ?? '';

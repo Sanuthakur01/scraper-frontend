@@ -19,6 +19,8 @@ const NOT_REACHED: RemarkStatus[] = ['dnp', 'busy', 'switched-off'];
 
 export interface ReviewStats {
   given: number; // given to a student in the period (a number given to two students: twice)
+  givenPhones: number; // of those, phone numbers
+  givenEmails: number; // and emails
   givenNumbers: number; // the numbers and emails those were (each once)
   feedback: number; // with feedback recorded in the period
   byRemark: Record<RemarkStatus, number>; // that feedback, per remark
@@ -37,6 +39,7 @@ export interface ReviewStats {
 export function statsOf(rows: ReviewRow[]): ReviewStats {
   const byRemark = Object.fromEntries(REMARK_IDS.map((id) => [id, 0])) as Record<RemarkStatus, number>;
   let given = 0;
+  let givenPhones = 0;
   let feedback = 0;
   let awaiting = 0;
   const givenNumbers = new Set<string>();
@@ -49,6 +52,7 @@ export function statsOf(rows: ReviewRow[]): ReviewStats {
     }
     if (row.given?.inPeriod) {
       given++;
+      if (row.field === 'phone') givenPhones++;
       givenNumbers.add(row.contact);
       if (!row.now?.status) awaiting++;
     }
@@ -62,6 +66,8 @@ export function statsOf(rows: ReviewRow[]): ReviewStats {
   const wrong = sum(WRONG);
   return {
     given,
+    givenPhones,
+    givenEmails: given - givenPhones,
     givenNumbers: givenNumbers.size,
     feedback,
     byRemark,
@@ -238,18 +244,34 @@ export function retryCalls(rows: ReviewRow[], yesterday: string): ReviewRow[] {
     .sort((a, b) => Date.parse(b.feedback!.at) - Date.parse(a.feedback!.at));
 }
 
+// ---------- A remark added on the board ----------
+
+// A row after a remark was added to its call on the board: the student's follow-up now (PUT /outcomes' answer, its
+// remarks oldest first), and, when the new remark falls in the period, the call's feedback as GET /review gives it
+// (label: the remark in words; hours: since it was given to the student).
+export function withRemarkAdded(row: ReviewRow, now: NonNullable<ReviewRow['now']>, label: string, inPeriod: boolean): ReviewRow {
+  const latest = now.history?.at(-1);
+  if (!latest?.at || !inPeriod) return { ...row, now };
+  const hours = row.given ? (Date.parse(latest.at) - Date.parse(row.given.at)) / 3_600_000 : null;
+  const by = { email: latest.by?.email ?? '', name: latest.by?.name ?? '' };
+  return { ...row, now, feedback: { at: latest.at, by, label, status: latest.status, note: latest.note, hours } };
+}
+
 // ---------- The list's filters ----------
 
-export type RemarkFilter = '' | 'given' | 'not-given' | 'feedback' | 'awaiting' | 'reached' | 'wrong-any' | RemarkStatus;
+// Each count on the board has one: the rows it counts. not-reached: DNP, Busy or Switched off; through: the calls
+// that got through, to the right person or not (what "Right person" is a share of).
+export type RemarkFilter = '' | 'given' | 'not-given' | 'feedback' | 'awaiting' | 'reached' | 'wrong-any' | 'not-reached' | 'through' | RemarkStatus;
 export interface ReviewFilters {
   remark: RemarkFilter;
+  field: '' | 'phone' | 'email'; // phone numbers or emails only ('' : both)
   student: string; // a student's key (lower case), or '' for all
   course: string;
   finder: string; // byFinder's key
   giver: string; // the email of who gave it out
   q: string;
 }
-export const NO_REVIEW_FILTERS: ReviewFilters = { remark: '', student: '', course: '', finder: '', giver: '', q: '' };
+export const NO_REVIEW_FILTERS: ReviewFilters = { remark: '', field: '', student: '', course: '', finder: '', giver: '', q: '' };
 
 const GROUP_FILTERS: Record<string, (row: ReviewRow) => boolean> = {
   given: (row) => Boolean(row.given?.inPeriod),
@@ -258,17 +280,21 @@ const GROUP_FILTERS: Record<string, (row: ReviewRow) => boolean> = {
   awaiting: (row) => Boolean(row.given?.inPeriod && !row.now?.status),
   reached: (row) => Boolean(row.feedback && REACHED.includes(row.feedback.status)),
   'wrong-any': (row) => Boolean(row.feedback && WRONG.includes(row.feedback.status)),
+  'not-reached': (row) => Boolean(row.feedback && NOT_REACHED.includes(row.feedback.status)),
+  through: (row) => Boolean(row.feedback && (REACHED.includes(row.feedback.status) || WRONG.includes(row.feedback.status))),
 };
 
 export function matchesReview(row: ReviewRow, f: ReviewFilters) {
   if (f.remark && !(GROUP_FILTERS[f.remark] ?? ((r: ReviewRow) => r.feedback?.status === f.remark))(row)) return false;
+  if (f.field && row.field !== f.field) return false;
   if (f.student && studentOf(row).toLowerCase() !== f.student) return false;
   if (f.course && row.job.course !== f.course) return false;
   if (f.finder && finderOf(row).key !== f.finder) return false;
   if (f.giver && !(row.given?.inPeriod && row.given.by.email === f.giver)) return false;
   const q = f.q.trim().toLowerCase();
   if (q) {
-    const text = [row.value, row.job.company, row.job.title, studentOf(row), row.feedback?.note, row.given?.by.name, row.found.by?.name, row.found.by?.email]
+    const notes = row.now?.history?.map((r) => r.note) ?? [];
+    const text = [row.value, row.job.company, row.job.title, studentOf(row), row.feedback?.note, ...notes, row.given?.by.name, row.found.by?.name, row.found.by?.email]
       .join(' ')
       .toLowerCase();
     if (!text.includes(q)) return false;
