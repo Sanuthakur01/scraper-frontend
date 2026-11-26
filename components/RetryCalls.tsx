@@ -16,8 +16,9 @@ const RETRY: RemarkStatus[] = ['dnp', 'busy', 'switched-off'];
 // "Yesterday's unanswered calls", above the Assign numbers list: the calls made yesterday that ended in DNP, Busy
 // or Switched off, with nothing recorded on the number since (lib/review.ts retryCalls), to try again today: they
 // may pick up now. Only yesterday's (IST), whatever period the list below shows. Each with its job (opens it), the
-// student whose call it was, the remark and when; a copy button per number and one for all of them (the numbers
-// and emails alone, separated by commas). The remark chips narrow the list (and what is copied).
+// student whose call it was, the remark and when; a copy button per number and one for all of them (separated by
+// commas, each with its job's HR name when one is typed in: "98100 00001 ---> Rahul"). The remark chips narrow the
+// list (and what is copied).
 export default function RetryCalls({
   courses,
   opening,

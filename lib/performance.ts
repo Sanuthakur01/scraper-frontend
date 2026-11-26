@@ -101,16 +101,19 @@ export function applyFollowUp(outcomes: ContactOutcome[], op: FollowUpOp): Conta
   return [...outcomes, withRemark(blank(student))];
 }
 
-// The numbers and emails of some rows, for the clipboard: nothing else from the rows, each once (however it was
-// written: "+91 98100 00001" and "98100 00001" are one number), in the rows' order, separated by commas.
-export function contactsText(rows: Pick<PerformanceRow, 'field' | 'key' | 'value'>[]) {
+// The numbers and emails of some rows, for the clipboard: each once (however it was written: "+91 98100 00001"
+// and "98100 00001" are one number), in the rows' order, separated by commas. A row whose job has an HR name
+// typed in is copied as "number ---> HR name" (several names joined with " / "); a row without a name is the
+// number alone.
+export function contactsText(rows: (Pick<PerformanceRow, 'field' | 'key' | 'value'> & { hrName?: string })[]) {
   const seen = new Set<string>();
   const values: string[] = [];
   for (const row of rows) {
     const id = `${row.field}|${row.key}`;
     if (seen.has(id)) continue;
     seen.add(id);
-    values.push(row.value.trim());
+    const name = row.hrName?.trim();
+    values.push(name ? `${row.value.trim()} ---> ${name}` : row.value.trim());
   }
   return { text: values.join(', '), count: values.length, repeats: rows.length - values.length };
 }
