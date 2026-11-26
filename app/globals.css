@@ -3888,6 +3888,29 @@ button.rank-row:disabled {
   font-weight: 400;
 }
 
+/* "Points" (1.5 a phone number, 1 an email, 5 a CV shared): what the report ranks by, so it stands out at every
+   level; a person's is the big number */
+.perf-table .points-col {
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.perf-table thead th.points-col {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.perf-table tfoot td.points-col {
+  background: var(--accent-soft);
+}
+
+.perf-table .perf-leaf td.points-col {
+  width: auto;
+}
+
 /* Each level is indented under the one above it (--depth: 0 for a person) */
 .perf-name {
   display: flex;
@@ -4046,6 +4069,13 @@ button.rank-row:disabled {
 .perf-kind.email {
   background: var(--good-bg);
   color: var(--good-text);
+}
+
+/* A CV shared on a number found before the period: its own line under the job, in the CV shared green */
+.perf-kind.cv {
+  background: var(--good-bg);
+  color: var(--good-text);
+  border: 1px solid color-mix(in srgb, var(--good-text) 35%, transparent);
 }
 
 .perf-value {
@@ -8796,6 +8826,15 @@ html:has(.job-modal[open]) {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+}
+
+/* "pts" after the points */
+.lb-unit {
+  margin-left: 3px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-muted);
 }
 
 .lb-gap {

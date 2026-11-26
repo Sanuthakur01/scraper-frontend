@@ -404,8 +404,26 @@ export interface ContactOutcome {
   updatedBy: { email: string; name?: string } | null;
 }
 
+// A CV shared, as GET /performance counts them for the points: the first time a student's call on a number or
+// email got the remark "CV shared", in the period (by when the remark was recorded, not when the number was
+// added). finder: who added the number to the job, whose points it is (null: from the job post, copied from the
+// company's earlier job, or from before the record began: nobody's).
+export interface CvSharedEvent {
+  at: string;
+  by: { email: string; name: string }; // who recorded the remark
+  student: string; // whose call ('' : a remark from before anyone had the number)
+  job: ActivityEntry['job'];
+  field: 'phone' | 'email';
+  value: string;
+  key: string;
+  finder: { email: string; name?: string; role?: string | null } | null;
+  addedAt: string | null; // when the number was added to the job
+}
+
 export interface PerformanceResponse {
   days: number;
+  cvShared?: CvSharedEvent[]; // the CVs shared in the period, for the points (absent from a server older than 26 Nov 2026)
+  points?: { phone: number; email: number; cvShared: number }; // what each activity scores (lib/performance.ts POINTS)
   from: string; // IST days, both included
   to: string;
   since: string | null; // when the activity record began

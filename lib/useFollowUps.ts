@@ -14,8 +14,8 @@ type Entry = { confirmed: ContactOutcome[]; waiting: Waiting[] }; // the server'
 // shown at once, before the server answers. A number's saves go one after another, in the order they were made,
 // and what it shows is the server's last answer with the changes still on their way on top (one refused is just
 // left out). Loading the report again starts from what the server has. Used by the Performance report and the
-// Assign numbers page.
-export function useFollowUps(data: PerformanceResponse | null) {
+// Assign numbers page. onSaved: called once the server has taken a change (e.g. to count a CV shared at once).
+export function useFollowUps(data: PerformanceResponse | null, onSaved?: (row: PerformanceRow, op: FollowUpOp) => void) {
   const [changes, setChanges] = useState<{ base: PerformanceResponse | null; map: Record<string, Entry> }>({ base: null, map: {} });
   const [saves, setSaves] = useState<Record<string, SaveState | undefined>>({});
   const [added, setAdded] = useState<string[]>([]); // students named here, for the suggestions
@@ -79,6 +79,7 @@ export function useFollowUps(data: PerformanceResponse | null) {
         settle(answer.outcomes ?? null);
         const named = 'add' in op ? op.add : 'remove' in op ? '' : op.student;
         if (named) setAdded((names) => (names.includes(named) ? names : [...names, named]));
+        onSaved?.(row, op);
       } catch (err) {
         settle(null);
         failed.current[key] = `Not saved: ${err instanceof ApiError || err instanceof Error ? err.message : 'try again'}`;

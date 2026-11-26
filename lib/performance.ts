@@ -2,7 +2,7 @@
 // added (GET /api/performance, one row each), grouped person → course → company → job, each level
 // with its own counts. The rows under a job are the final grain: each number and email, and when.
 import type { Period } from './format';
-import type { ContactOutcome, CourseId, PerformanceRow, RemarkEntry, RemarkStatus } from './types';
+import type { ContactOutcome, CourseId, CvSharedEvent, PerformanceRow, RemarkEntry, RemarkStatus } from './types';
 
 // The remarks the calling team chooses from (the server's REMARKS), in the order shown, and the colour
 // each shows in: good (CV shared), warn (try again), bad (dead end), neutral.
@@ -20,6 +20,25 @@ export const REMARKS: { id: RemarkStatus; label: string; tone: 'good' | 'warn' |
 // A remark's name for a number or an email ("Wrong number" reads "Wrong email" for an email).
 export const remarkName = (status: RemarkStatus, field: 'phone' | 'email') =>
   status === 'wrong' && field === 'email' ? 'Wrong email' : (REMARKS.find((r) => r.id === status)?.label ?? status);
+
+// ---------- Points ----------
+
+// What each activity scores (the rule chosen on 26 Nov 2026; the server's src/points.js says the same): finding a
+// phone number, finding an email, and a CV shared on a contact the person found (to the finder, not the caller;
+// counted on the day the CV was shared, once per student's call). The report and the daily leaderboard rank by
+// points, not by how many contacts someone found.
+export const POINTS = { phone: 1.5, email: 1, cvShared: 5 } as const;
+export const pointsOf = (c: { phones: number; emails: number; cvShared: number }) => c.phones * POINTS.phone + c.emails * POINTS.email + c.cvShared * POINTS.cvShared;
+const pointsFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 1 });
+// "12", "12.5"
+export const formatPoints = (n: number) => pointsFormat.format(n);
+
+// The CVs shared that are someone's points: on contacts the team found (not the job post's, copied or earlier ones).
+export type TeamCvShared = CvSharedEvent & { finder: NonNullable<CvSharedEvent['finder']> };
+export const teamCvShared = (events: CvSharedEvent[] | undefined): TeamCvShared[] => (events ?? []).filter((e): e is TeamCvShared => Boolean(e.finder));
+// Of some CVs shared, the ones on one number or email (its rows share them).
+export const cvSharedOn = (events: TeamCvShared[], row: Pick<PerformanceRow, 'job' | 'field' | 'key'>) =>
+  events.filter((e) => String(e.job.id) === String(row.job.id) && e.field === row.field && e.key === row.key);
 
 // The same number or email of the same job: one follow-up, whichever row it is shown on.
 export const outcomeKey = (row: Pick<PerformanceRow, 'job' | 'field' | 'key'>) => `${row.job.id}|${row.field}|${row.key}`;
@@ -132,7 +151,8 @@ export interface Counts {
   jobs: number; // different jobs they were added to
   assigned: number; // of total: given to a student
   remarked: number; // of total: with a remark
-  cvShared: number; // CVs shared on them: each student's call that ended in "CV shared" (two students: two)
+  cvShared: number; // the CVs shared in the period on contacts under it (teamCvShared), each student's call once
+  points: number; // POINTS: 1.5 a phone number + 1 an email + 5 a CV shared
   sources: { source: string; count: number }[]; // where they were found (Found by), most first
 }
 
@@ -146,18 +166,21 @@ export interface PerfNode extends Counts {
   job?: PerformanceRow['job'];
   children: PerfNode[]; // none under a job: its rows are the final grain
   rows: PerformanceRow[]; // every number and email under it, newest first
+  events: TeamCvShared[]; // the CVs shared in the period under it (some on numbers added before it), newest first
 }
 
-export function countsOf(rows: PerformanceRow[]): Counts {
+export function countsOf(rows: PerformanceRow[], cvShared: TeamCvShared[] = []): Counts {
   const phones = rows.filter((r) => r.field === 'phone').length;
+  const emails = rows.length - phones;
   return {
     phones,
-    emails: rows.length - phones,
+    emails,
     total: rows.length,
     jobs: new Set(rows.map((r) => String(r.job.id))).size,
     assigned: rows.filter(hasStudent).length,
     remarked: rows.filter((r) => followUpsOf(r).some((o) => o.status)).length,
-    cvShared: rows.reduce((n, r) => n + cvSharedOf(r), 0),
+    cvShared: cvShared.length,
+    points: pointsOf({ phones, emails, cvShared: cvShared.length }),
     sources: sourcesOf(rows),
   };
 }
@@ -170,82 +193,102 @@ export function sourcesOf(rows: Pick<PerformanceRow, 'foundBy'>[]) {
   return [...counts].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count || a.source.localeCompare(b.source));
 }
 
-// What a row is grouped by at each level. Companies ignore letter case and spaces around the name.
-function keyOf(row: PerformanceRow, level: Level) {
-  if (level === 'person') return row.actor.email.toLowerCase();
-  if (level === 'course') return row.job.course ?? '';
-  if (level === 'company') return (row.job.company ?? '').trim().toLowerCase();
-  return String(row.job.id);
+// What the tree is built from: a number or email added (a row), or a CV shared on one the person found (an event,
+// under its finder). Each knows its person and its job.
+type Item = { row: PerformanceRow; event?: undefined } | { event: TeamCvShared; row?: undefined };
+const actorOf = (item: Item) => (item.row ? item.row.actor : item.event.finder);
+const jobOf = (item: Item) => (item.row ? item.row.job : item.event.job);
+
+// What an item is grouped by at each level. Companies ignore letter case and spaces around the name.
+function keyOf(item: Item, level: Level) {
+  if (level === 'person') return actorOf(item).email.toLowerCase();
+  const job = jobOf(item);
+  if (level === 'course') return job.course ?? '';
+  if (level === 'company') return (job.company ?? '').trim().toLowerCase();
+  return String(job.id);
 }
 
-function labelOf(rows: PerformanceRow[], level: Level, courseName: (id: string) => string) {
-  const row = rows[0];
-  if (level === 'person') return rows.find((r) => r.actor.name?.trim())?.actor.name?.trim() || row.actor.email; // their newest name
-  if (level === 'course') return row.job.course ? courseName(row.job.course) : 'Course not known';
-  if (level === 'company') return row.job.company?.trim() || 'Company not shown';
-  return row.job.title || 'A job';
+function labelOf(items: Item[], level: Level, courseName: (id: string) => string) {
+  const first = items[0];
+  if (level === 'person') return items.map(actorOf).find((a) => a.name?.trim())?.name?.trim() || actorOf(first).email; // their newest name
+  const job = jobOf(first);
+  if (level === 'course') return job.course ? courseName(job.course) : 'Course not known';
+  if (level === 'company') return job.company?.trim() || 'Company not shown';
+  return job.title || 'A job';
 }
 
-// The tree, most contact details first at every level (then by name).
-export function buildTree(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id): PerfNode[] {
-  const group = (list: PerformanceRow[], depth: number, parent: string): PerfNode[] => {
+// The tree, most points first at every level (then most contact details, then by name). cvShared: the period's CVs
+// shared (teamCvShared), each under whoever found the number, on its job: a job none of whose numbers were added in
+// the period is still there, with the CV shared alone.
+export function buildTree(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id, cvShared: TeamCvShared[] = []): PerfNode[] {
+  const group = (list: Item[], depth: number, parent: string): PerfNode[] => {
     const level = LEVELS[depth];
-    const groups = new Map<string, PerformanceRow[]>();
-    for (const row of list) {
-      const key = keyOf(row, level);
-      const rowsOf = groups.get(key);
-      if (rowsOf) rowsOf.push(row);
-      else groups.set(key, [row]);
+    const groups = new Map<string, Item[]>();
+    for (const item of list) {
+      const key = keyOf(item, level);
+      const itemsOf = groups.get(key);
+      if (itemsOf) itemsOf.push(item);
+      else groups.set(key, [item]);
     }
-    const nodes = [...groups].map(([key, rowsOf]): PerfNode => {
+    const nodes = [...groups].map(([key, items]): PerfNode => {
       const id = `${parent}${parent ? '/' : ''}${level === 'company' ? 'o' : level[0]}:${key}`;
-      const first = rowsOf[0];
+      const rowsOf = items.flatMap((item) => (item.row ? [item.row] : []));
+      const eventsOf = items.flatMap((item) => (item.event ? [item.event] : []));
+      const actor = actorOf(items[0]);
+      const label = labelOf(items, level, courseName);
       return {
         id,
         level,
         depth,
-        label: labelOf(rowsOf, level, courseName),
-        ...countsOf(rowsOf),
-        ...(level === 'person' ? { person: { email: first.actor.email.toLowerCase(), name: labelOf(rowsOf, level, courseName), role: first.actor.role ?? null } } : {}),
-        ...(level === 'course' ? { course: first.job.course } : {}),
-        ...(level === 'job' ? { job: first.job } : {}),
-        children: depth < LEVELS.length - 1 ? group(rowsOf, depth + 1, id) : [],
+        label,
+        ...countsOf(rowsOf, eventsOf),
+        ...(level === 'person' ? { person: { email: actor.email.toLowerCase(), name: label, role: actor.role ?? null } } : {}),
+        ...(level === 'course' ? { course: jobOf(items[0]).course } : {}),
+        ...(level === 'job' ? { job: jobOf(items[0]) } : {}),
+        children: depth < LEVELS.length - 1 ? group(items, depth + 1, id) : [],
         rows: rowsOf,
+        events: eventsOf,
       };
     });
-    return nodes.sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+    return nodes.sort((a, b) => b.points - a.points || b.total - a.total || a.label.localeCompare(b.label));
   };
-  return group(rows, 0, '');
+  return group([...rows.map((row): Item => ({ row })), ...cvShared.map((event): Item => ({ event }))], 0, '');
 }
 
 // "Riya Sharma" -> "RS"; "riya@ijf.in" -> "R"
 export const initials = (name: string, email: string) =>
   (name.trim() && name !== email ? name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]) : [email[0] ?? '?']).join('').toUpperCase();
 
-// One person's place on the daily leaderboard: the contact details (phone numbers + emails) they added.
+// One person's place on the daily leaderboard: their points (POINTS), from the contact details (phone numbers +
+// emails) they added and the CVs shared on contacts they found.
 export interface Standing {
   email: string;
   name: string;
   role: string | null;
   phones: number;
   emails: number;
-  total: number;
+  total: number; // phones + emails
+  cvShared: number;
+  points: number;
   jobs: number;
-  rank: number; // 1 = the most; the same total shares a place (1, 2, 2, 4)
+  rank: number; // 1 = the most points; the same points share a place (1, 2, 2, 4)
 }
 
-// The leaderboard: whoever added the most contact details first (counted as in the report's Total), then A–Z.
-export function standings(rows: PerformanceRow[]): Standing[] {
-  const people = buildTree(rows).map((node) => ({
+// The leaderboard: the most points first (then the most contact details, then A–Z). cvShared: the day's CVs shared
+// (teamCvShared); someone with one and nothing added is on the board with its points.
+export function standings(rows: PerformanceRow[], cvShared: TeamCvShared[] = []): Standing[] {
+  const people = buildTree(rows, undefined, cvShared).map((node) => ({
     email: node.person?.email ?? node.label,
     name: node.label,
     role: node.person?.role ?? null,
     phones: node.phones,
     emails: node.emails,
     total: node.total,
+    cvShared: node.cvShared,
+    points: node.points,
     jobs: node.jobs,
   }));
-  return people.map((person) => ({ ...person, rank: 1 + people.filter((other) => other.total > person.total).length }));
+  return people.map((person) => ({ ...person, rank: 1 + people.filter((other) => other.points > person.points).length }));
 }
 
 // Every node's id (for "Expand all").
@@ -258,27 +301,34 @@ export const csvCell = (value: unknown) => {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
-// One line per number or email added (the final grain), for a spreadsheet.
-export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id) {
-  const header = ['Added (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value', 'Found by', 'Assigned to', 'Remark'];
-  const lines = rows.map((r) =>
-    [
-      istStamp(r.at),
-      r.actor.name ?? '',
-      r.actor.email,
-      r.actor.role ?? '',
-      r.job.course ? courseName(r.job.course) : '',
-      r.job.company ?? '',
-      r.job.title ?? '',
-      r.job.set === 'nonfiltered' ? 'Non-filtered' : 'Filtered',
-      r.field === 'phone' ? 'Phone' : 'Email',
-      r.value,
-      r.foundBy ?? '',
-      followUpsOf(r).map((o) => o.student).filter(Boolean).join('; '),
-      remarksText(r),
-    ]
-      .map(csvCell)
-      .join(','),
-  );
+// One line per number or email added, and one per CV shared on a contact the person found (the final grain), each
+// with its points; the newest first. For a spreadsheet: the Points column adds up to the report's.
+export function performanceCsv(rows: PerformanceRow[], courseName: (id: string) => string = (id) => id, cvShared: TeamCvShared[] = []) {
+  const header = ['When (IST)', 'Person', 'Email', 'Role', 'Course', 'Company', 'Job', 'Filtered / Non-filtered', 'Detail', 'Value', 'Found by', 'Assigned to', 'Remark', 'Points'];
+  const jobCells = (job: PerformanceRow['job']) => [job.course ? courseName(job.course) : '', job.company ?? '', job.title ?? '', job.set === 'nonfiltered' ? 'Non-filtered' : 'Filtered'];
+  const lines = [
+    ...rows.map((r) => ({
+      at: r.at,
+      cells: [
+        istStamp(r.at),
+        r.actor.name ?? '',
+        r.actor.email,
+        r.actor.role ?? '',
+        ...jobCells(r.job),
+        r.field === 'phone' ? 'Phone' : 'Email',
+        r.value,
+        r.foundBy ?? '',
+        followUpsOf(r).map((o) => o.student).filter(Boolean).join('; '),
+        remarksText(r),
+        POINTS[r.field],
+      ],
+    })),
+    ...cvShared.map((e) => ({
+      at: e.at,
+      cells: [istStamp(e.at), e.finder.name ?? '', e.finder.email, e.finder.role ?? '', ...jobCells(e.job), 'CV shared', e.value, '', e.student, 'CV shared', POINTS.cvShared],
+    })),
+  ]
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .map((line) => line.cells.map(csvCell).join(','));
   return `﻿${[header.join(','), ...lines].join('\r\n')}`;
 }

@@ -5,14 +5,14 @@ import { Fragment, useEffect, useId, useMemo, useState, type CSSProperties, type
 import { useApi } from '@/lib/api';
 import { ROLE_LABELS, roleFrom } from '@/lib/access';
 import { COURSE_COLORS, formatDate, formatDateTime, formatNumber, formatUpdated, istDayOf, percent, periodFrom, periodParams, type Period } from '@/lib/format';
-import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, cvSharedOf, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, REMARKS, type Counts, type PerfNode } from '@/lib/performance';
+import { ACTIVITY_PERIODS, allIds, buildTree, countsOf, cvSharedOn, formatPoints, hasRemark, hasStudent, needsRemark, outcomeKey, performanceCsv, POINTS, REMARKS, teamCvShared, type Counts, type PerfNode } from '@/lib/performance';
 import type { Meta, PerformanceResponse, PerformanceRow, RemarkStatus } from '@/lib/types';
 import { useFollowUps } from '@/lib/useFollowUps';
 import { useAccess } from './AuthGate';
 import Avatar from './Avatar';
 import ContactList, { useJobWindow } from './ContactList';
 import { FollowUps } from './FollowUpControls';
-import { BriefcaseIcon, BuildingIcon, ChartIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, UsersIcon } from './Icons';
+import { BriefcaseIcon, BuildingIcon, ChartIcon, CheckIcon, ChevronRightIcon, DownloadIcon, ExternalIcon, ListIcon, MailIcon, PhoneIcon, SearchIcon, TrophyIcon, UsersIcon } from './Icons';
 import Leaderboard from './Leaderboard';
 import { CardHeader, PageError, PageHeader, PageSkeleton, SectionError, Segmented } from './PageParts';
 import PeriodTabs from './PeriodTabs';
@@ -126,10 +126,16 @@ export default function PerformanceReport() {
   const [course, setCourse] = useState(''); // "All contacts": one course's numbers/emails ('' = all)
   // Follow-ups changed here are shown at once, before the server answers (lib/useFollowUps.ts).
   const data = perf.data;
-  const { rows, students, saves, save } = useFollowUps(data);
+  // A CV shared recorded here is 5 points for whoever found the contact: the report and the leaderboard count it
+  // as soon as the server has it.
+  const { rows, students, saves, save } = useFollowUps(data, (_row, op) => {
+    if ('status' in op && op.status === 'cv-shared') setReload((n) => n + 1);
+  });
   // A job opened from its row (in its window), or why it couldn't be.
   const jobWindow = useJobWindow(meta.data?.courses, () => setReload((n) => n + 1));
-  const tree = useMemo(() => buildTree(rows, (id) => meta.data?.courses.find((c) => c.id === id)?.name ?? id), [rows, meta.data]);
+  // The period's CVs shared on contacts the team found: 5 points each, to the finder (lib/performance.ts POINTS).
+  const cvShared = useMemo(() => teamCvShared(data?.cvShared), [data]);
+  const tree = useMemo(() => buildTree(rows, (id) => meta.data?.courses.find((c) => c.id === id)?.name ?? id, cvShared), [rows, meta.data, cvShared]);
   // Every number and email once (the newest time it was added), for "All contacts".
   const contacts = useMemo(() => {
     const seen = new Map<string, PerformanceRow>();
@@ -154,7 +160,7 @@ export default function PerformanceReport() {
 
   const courses = meta.data.courses;
   const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? id;
-  const totals = countsOf(rows);
+  const totals = countsOf(rows, cvShared);
   const since = data?.since ?? null;
   const today = istDayOf(new Date().toISOString());
   const startsBeforeTracking = since && data && data.from < istDayOf(since);
@@ -173,7 +179,7 @@ export default function PerformanceReport() {
     });
 
   const download = () => {
-    const blob = new Blob([performanceCsv(rows, courseName)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([performanceCsv(rows, courseName, cvShared)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -223,38 +229,76 @@ export default function PerformanceReport() {
           <td className="num hide-sm">{formatNumber(node.phones)}</td>
           <td className="num hide-sm">{formatNumber(node.emails)}</td>
           <td className="num">
-            <span className={node.level === 'person' ? 'big-num' : 'strong'}>{formatNumber(node.total)}</span>
+            <span className="strong">{formatNumber(node.total)}</span>
           </td>
           <td className="num">{formatNumber(node.jobs)}</td>
           <td className={`num given-col ${node.assigned ? '' : 'is-zero'}`}>{formatNumber(node.assigned)}</td>
           <td className={`num cv-col ${node.cvShared ? '' : 'is-zero'}`}>{formatNumber(node.cvShared)}</td>
+          <td className="num points-col">
+            <span className={node.level === 'person' ? 'big-num' : 'strong'}>{formatPoints(node.points)}</span>
+          </td>
           <td className="found-col">{mostlyFound(node.sources, node.total)}</td>
         </tr>
         {isOpen && node.children.map(renderNode)}
         {isOpen &&
           node.level === 'job' &&
-          node.rows.map((row) => (
-            <tr key={`${row.record}-${row.field}-${row.value}`} className="perf-leaf">
-              <td colSpan={5}>
-                <div className="perf-name" style={{ '--depth': node.depth + 1 } as CSSProperties}>
-                  <span className={`perf-kind ${row.field}`}>
-                    {row.field === 'phone' ? <PhoneIcon size={13} /> : <MailIcon size={13} />}
-                    {row.field === 'phone' ? 'Phone' : 'Email'}
-                  </span>
-                  <span className="perf-value">{row.value}</span>
-                  <time className="muted perf-time" dateTime={row.at} title={formatDateTime(row.at)}>
-                    added {formatUpdated(row.at)}
-                  </time>
-                </div>
-                <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
-                  {followUps(row)}
-                </div>
-              </td>
-              <td className={`num given-col ${hasStudent(row) ? '' : 'is-zero'}`}>{hasStudent(row) ? '1' : '—'}</td>
-              <td className={`num cv-col ${cvSharedOf(row) ? '' : 'is-zero'}`}>{cvSharedOf(row) ? formatNumber(cvSharedOf(row)) : '—'}</td>
-              <td className="found-col">{row.foundBy || NOT_RECORDED}</td>
-            </tr>
-          ))}
+          node.rows.map((row, i) => {
+            // The period's CVs shared on this number (on its first line, if it was added twice), and its points.
+            const cvs = node.rows.findIndex((r) => r.field === row.field && r.key === row.key) === i ? cvSharedOn(node.events, row) : [];
+            const points = POINTS[row.field] + POINTS.cvShared * cvs.length;
+            return (
+              <tr key={`${row.record}-${row.field}-${row.value}`} className="perf-leaf">
+                <td colSpan={5}>
+                  <div className="perf-name" style={{ '--depth': node.depth + 1 } as CSSProperties}>
+                    <span className={`perf-kind ${row.field}`}>
+                      {row.field === 'phone' ? <PhoneIcon size={13} /> : <MailIcon size={13} />}
+                      {row.field === 'phone' ? 'Phone' : 'Email'}
+                    </span>
+                    <span className="perf-value">{row.value}</span>
+                    <time className="muted perf-time" dateTime={row.at} title={formatDateTime(row.at)}>
+                      added {formatUpdated(row.at)}
+                    </time>
+                  </div>
+                  <div className="leaf-followup" style={{ '--depth': node.depth + 1 } as CSSProperties}>
+                    {followUps(row)}
+                  </div>
+                </td>
+                <td className={`num given-col ${hasStudent(row) ? '' : 'is-zero'}`}>{hasStudent(row) ? '1' : '—'}</td>
+                <td className={`num cv-col ${cvs.length ? '' : 'is-zero'}`}>{cvs.length ? formatNumber(cvs.length) : '—'}</td>
+                <td className="num points-col">{formatPoints(points)}</td>
+                <td className="found-col">{row.foundBy || NOT_RECORDED}</td>
+              </tr>
+            );
+          })}
+        {isOpen &&
+          node.level === 'job' &&
+          node.events
+            .filter((e) => !node.rows.some((r) => r.field === e.field && r.key === e.key))
+            .map((e) => (
+              // A CV shared on a number found before the period: its own line, with its points.
+              <tr key={`cv-${e.at}-${e.field}-${e.key}-${e.student}`} className="perf-leaf perf-cv-leaf">
+                <td colSpan={5}>
+                  <div className="perf-name" style={{ '--depth': node.depth + 1 } as CSSProperties}>
+                    <span className="perf-kind cv">
+                      <CheckIcon size={13} />
+                      CV shared
+                    </span>
+                    <span className="perf-value">{e.value}</span>
+                    <time className="muted perf-time" dateTime={e.at} title={formatDateTime(e.at)}>
+                      {e.student ? `${e.student}'s call · ` : ''}
+                      {formatUpdated(e.at)}
+                      {e.addedAt ? ` · found ${formatUpdated(e.addedAt)}` : ''}
+                    </time>
+                  </div>
+                </td>
+                <td className={`num given-col ${e.student ? '' : 'is-zero'}`}>{e.student ? '1' : '—'}</td>
+                <td className="num cv-col">1</td>
+                <td className="num points-col">{formatPoints(POINTS.cvShared)}</td>
+                <td className="found-col">
+                  <span className="muted">—</span>
+                </td>
+              </tr>
+            ))}
       </Fragment>
     );
   };
@@ -264,7 +308,7 @@ export default function PerformanceReport() {
       <PageHeader
         eyebrow={`Team · ${period.label}`}
         title="Performance report"
-        subtitle="How many HR phone numbers and emails each person added, and where; and for each one, the students it was given to and how each call went."
+        subtitle="Each person's points: 1.5 for a phone number found, 1 for an email, 5 for a CV shared on a contact they found. With what each one added and where, and for each number, the students it was given to and how each call went."
         actions={
           <PeriodTabs
             period={period}
@@ -279,12 +323,19 @@ export default function PerformanceReport() {
         {since && <span className="status-pill">Counted since {formatDate(since)}, when the activity record began</span>}
       </PageHeader>
 
-      <section className={`kpis kpis-4 ${perf.loading ? 'is-loading' : ''}`} aria-label="Contact details added">
+      <section className={`kpis kpis-6 ${perf.loading ? 'is-loading' : ''}`} aria-label="Points and contact details added">
         {[
-          { icon: <UsersIcon size={16} />, name: 'Contact details added', value: totals.total, note: period.title },
-          { icon: <PhoneIcon size={16} />, name: 'Phone numbers', value: totals.phones, note: `${percent(totals.phones, totals.total)} of them` },
-          { icon: <MailIcon size={16} />, name: 'Emails', value: totals.emails, note: `${percent(totals.emails, totals.total)} of them` },
-          { icon: <BriefcaseIcon size={16} />, name: 'Jobs', value: totals.jobs, note: `with new details, by ${formatNumber(tree.length)} ${tree.length === 1 ? 'person' : 'people'}` },
+          {
+            icon: <TrophyIcon size={16} />,
+            name: 'Points',
+            value: formatPoints(totals.points),
+            note: `${formatPoints(POINTS.phone)} a phone number · ${formatPoints(POINTS.email)} an email · ${formatPoints(POINTS.cvShared)} a CV shared`,
+          },
+          { icon: <UsersIcon size={16} />, name: 'Contact details added', value: formatNumber(totals.total), note: period.title },
+          { icon: <PhoneIcon size={16} />, name: 'Phone numbers', value: formatNumber(totals.phones), note: `${percent(totals.phones, totals.total)} of them` },
+          { icon: <MailIcon size={16} />, name: 'Emails', value: formatNumber(totals.emails), note: `${percent(totals.emails, totals.total)} of them` },
+          { icon: <CheckIcon size={16} />, name: 'CVs shared', value: formatNumber(totals.cvShared), note: 'on contacts the team found: points to whoever found them' },
+          { icon: <BriefcaseIcon size={16} />, name: 'Jobs', value: formatNumber(totals.jobs), note: `with new details, by ${formatNumber(tree.length)} ${tree.length === 1 ? 'person' : 'people'}` },
         ].map((card) => (
           <div className="kpi" key={card.name}>
             <div className="kpi-top">
@@ -293,7 +344,7 @@ export default function PerformanceReport() {
               </span>
               <span className="kpi-name">{card.name}</span>
             </div>
-            <p className="kpi-value">{data ? formatNumber(card.value) : '—'}</p>
+            <p className="kpi-value">{data ? card.value : '—'}</p>
             <p className="kpi-period">{card.note}</p>
           </div>
         ))}
@@ -397,8 +448,15 @@ export default function PerformanceReport() {
                   <th scope="col" className="num given-col" title="How many of these numbers and emails are given to at least one student">
                     Given to students
                   </th>
-                  <th scope="col" className="num cv-col" title="CVs shared on these numbers and emails: each student whose call ended in CV shared">
+                  <th scope="col" className="num cv-col" title="CVs shared in the period on numbers and emails they found: each student's call once, counted on the day the CV was shared">
                     CV shared
+                  </th>
+                  <th
+                    scope="col"
+                    className="num points-col"
+                    title={`${formatPoints(POINTS.phone)} for each phone number found, ${formatPoints(POINTS.email)} for each email, ${formatPoints(POINTS.cvShared)} for each CV shared on a contact they found`}
+                  >
+                    Points
                   </th>
                   <th scope="col" className="found-col" title="Where most of these numbers and emails were found: the Found by chosen when adding them">
                     Mostly found by
@@ -415,6 +473,9 @@ export default function PerformanceReport() {
                   <td className="num">{formatNumber(totals.jobs)}</td>
                   <td className={`num given-col ${totals.assigned ? '' : 'is-zero'}`}>{formatNumber(totals.assigned)}</td>
                   <td className={`num cv-col ${totals.cvShared ? '' : 'is-zero'}`}>{formatNumber(totals.cvShared)}</td>
+                  <td className="num points-col">
+                    <span className="strong">{formatPoints(totals.points)}</span>
+                  </td>
                   <td className="found-col">{mostlyFound(totals.sources, totals.total)}</td>
                 </tr>
               </tfoot>
