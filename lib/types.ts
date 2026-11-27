@@ -446,7 +446,6 @@ export interface ReviewRow {
   student: string; // '' = no student
   withStudents: number; // how many students have the number now
   job: { id: string; set?: 'filtered' | 'nonfiltered'; title?: string; company?: string; course?: CourseId };
-  hrName?: string; // the job's HR name(s), joined with " / " (missing from a server older than this dashboard)
   field: 'phone' | 'email';
   value: string; // as written
   key: string;

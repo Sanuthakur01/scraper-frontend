@@ -17,7 +17,7 @@ const RETRY: RemarkStatus[] = ['dnp', 'busy', 'switched-off'];
 // or Switched off, with nothing recorded on the number since (lib/review.ts retryCalls), to try again today: they
 // may pick up now. Only yesterday's (IST), whatever period the list below shows. Each with its job (opens it), the
 // student whose call it was, the remark and when; a copy button per number and one for all of them (separated by
-// commas, each with its job's HR name when one is typed in: "98100 00001 ---> Rahul"). The remark chips narrow the
+// commas, each with its job's company: "98100 00001 ---> Acme Analytics"). The remark chips narrow the
 // list (and what is copied).
 export default function RetryCalls({
   courses,
@@ -74,7 +74,7 @@ export default function RetryCalls({
   const count = (id: RemarkStatus) => calls.filter((row) => row.feedback!.status === id).length;
   const shown = remark ? calls.filter((row) => row.feedback!.status === remark) : calls;
   const listed = all ? shown : shown.slice(0, SHOWN);
-  const contacts = contactsText(shown);
+  const contacts = contactsText(shown.map((row) => ({ ...row, company: row.job.company })));
   const contactsWord = (n: number) => `${formatNumber(n)} ${n === 1 ? 'contact' : 'contacts'}`;
   const copyAll = async (from: HTMLElement) => setCopied({ count: contacts.count, failed: !(await copyText(contacts.text, from)) });
 
