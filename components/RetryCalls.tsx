@@ -74,7 +74,7 @@ export default function RetryCalls({
   const count = (id: RemarkStatus) => calls.filter((row) => row.feedback!.status === id).length;
   const shown = remark ? calls.filter((row) => row.feedback!.status === remark) : calls;
   const listed = all ? shown : shown.slice(0, SHOWN);
-  const contacts = contactsText(shown.map((row) => ({ ...row, company: row.job.company })));
+  const contacts = contactsText(shown);
   const contactsWord = (n: number) => `${formatNumber(n)} ${n === 1 ? 'contact' : 'contacts'}`;
   const copyAll = async (from: HTMLElement) => setCopied({ count: contacts.count, failed: !(await copyText(contacts.text, from)) });
 

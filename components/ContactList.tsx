@@ -196,9 +196,9 @@ export default function ContactList({
   );
 }
 
-// While numbers are ticked: a bar at the bottom of the screen saying how many, with buttons to copy them (the
-// numbers and emails alone, each once, separated by commas), to tick every one in the list (`total`: the ones not
-// shown yet too) and to untick them all.
+// While numbers are ticked: a bar at the bottom of the screen saying how many, with buttons to copy them (each
+// once, with its job's company: "98100 00001 ---> Acme Analytics", separated by commas), to tick every one in the
+// list (`total`: the ones not shown yet too) and to untick them all.
 export function SelectionBar({ picked, total, onAll, onClear }: { picked: PerformanceRow[]; total: number; onAll: () => void; onClear: () => void }) {
   // What the last copy did, and for which ticks (ticking another one makes it out of date).
   const [copied, setCopied] = useState<{ count: number; repeats: number; failed: boolean; ticks: string } | null>(null);
